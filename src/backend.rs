@@ -14,11 +14,14 @@ pub enum Event {
     Notice(String),
     Shortcuts(lyricglass::config::Shortcuts),
     Startup(bool),
+    Imported(Box<Config>),
 }
 pub enum Preference {
     Save(Config),
     Install(Config),
     Startup(Config),
+    Import(std::path::PathBuf),
+    Export(std::path::PathBuf, Config),
 }
 pub struct Load {
     pub generation: u64,
@@ -75,6 +78,27 @@ impl Backend {
                                 }
                             }
                             let (config, install) = match change {
+                                Preference::Import(path) => {
+                                    match Config::read_from(&path).await {
+                                        Ok(config) => {
+                                            let _ = settings_events
+                                                .send(Event::Imported(Box::new(config)));
+                                        }
+                                        Err(error) => {
+                                            let _ = settings_events
+                                                .send(Event::Notice(error.to_string()));
+                                        }
+                                    }
+                                    continue;
+                                }
+                                Preference::Export(path, config) => {
+                                    let notice = match config.export(&path).await {
+                                        Ok(()) => "Settings exported".into(),
+                                        Err(error) => error.to_string(),
+                                    };
+                                    let _ = settings_events.send(Event::Notice(notice));
+                                    continue;
+                                }
                                 Preference::Save(c) => (c, false),
                                 Preference::Install(c) => (c, true),
                                 Preference::Startup(c) => {

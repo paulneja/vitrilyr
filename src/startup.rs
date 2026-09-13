@@ -1,4 +1,5 @@
 use anyhow::{Context, Result, ensure};
+use gio::prelude::*;
 use std::{path::Path, process::Command};
 
 pub fn desktop_exec(path: &Path) -> Result<String> {
@@ -30,7 +31,7 @@ pub fn unit(executable: &Path) -> Result<String> {
         .replace('%', "%%")
         .replace('$', "$$");
     Ok(format!(
-        "[Unit]\nDescription=LyricGlass music overlay\nPartOf=graphical-session.target\nAfter=graphical-session.target\n\n[Service]\nExecStart=\"{path}\"\nRestart=on-failure\nRestartSec=3\n\n[Install]\nWantedBy=graphical-session.target\n"
+        "[Unit]\nDescription=LyricGlass music overlay\nPartOf=graphical-session.target\nAfter=graphical-session-pre.target\n\n[Service]\nExecStart=\"{path}\"\nRestart=on-failure\nRestartSec=3\n\n[Install]\nWantedBy=graphical-session.target\n"
     ))
 }
 
@@ -96,6 +97,25 @@ pub fn run() -> Result<()> {
         }
     }
     Command::new(std::env::current_exe()?).spawn()?;
+    Ok(())
+}
+
+pub fn notify_config(config: &crate::config::Config) -> Result<()> {
+    if std::env::var_os("DBUS_SESSION_BUS_ADDRESS").is_none() {
+        return Ok(());
+    }
+    let app = gio::Application::new(
+        Some("io.github.lyricglass.LyricGlass"),
+        gio::ApplicationFlags::empty(),
+    );
+    app.register(None::<&gio::Cancellable>)?;
+    if app.is_remote() {
+        let json = serde_json::to_string(config)?;
+        app.activate_action("apply-config", Some(&json.to_variant()));
+        if let Some(connection) = app.dbus_connection() {
+            connection.flush_sync(None::<&gio::Cancellable>)?;
+        }
+    }
     Ok(())
 }
 

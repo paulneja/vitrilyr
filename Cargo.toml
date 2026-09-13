@@ -4,7 +4,11 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.92"
 license = "MIT"
-description = "A native, synchronized Spotify lyrics overlay for Wayland"
+description = "A native Spotify lyrics overlay for Linux desktops"
+
+[features]
+default = ["wayland"]
+wayland = ["dep:gtk4-layer-shell"]
 
 [dependencies]
 anyhow = "1"
@@ -13,7 +17,7 @@ directories = "6"
 futures-util = "0.3"
 gio = { version = "0.22", features = ["v2_80"] }
 gtk = { package = "gtk4", version = "0.11", features = ["v4_12"] }
-gtk4-layer-shell = "0.8"
+gtk4-layer-shell = { version = "0.8", optional = true }
 gdk-x11 = { package = "gdk4-x11", version = "0.11" }
 x11rb = "0.13"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }

@@ -123,6 +123,21 @@ pub fn dir() -> PathBuf {
 }
 
 impl Config {
+    pub fn decode(bytes: &[u8]) -> Result<Self> {
+        anyhow::ensure!(bytes.len() <= 128 * 1024, "Settings file exceeds 128 KiB");
+        let mut config: Self = serde_json::from_slice(bytes).context("Invalid settings JSON")?;
+        config.normalize();
+        Ok(config)
+    }
+    pub async fn read_from(path: &std::path::Path) -> Result<Self> {
+        let bytes = crate::cache::read(path, 128 * 1024)
+            .await
+            .context("Cannot read settings file (maximum 128 KiB)")?;
+        Self::decode(&bytes)
+    }
+    pub async fn export(&self, path: &std::path::Path) -> Result<()> {
+        crate::cache::write(path, &serde_json::to_vec_pretty(self)?).await
+    }
     pub fn clamp_position(&mut self, monitor: (i32, i32), panel: (i32, i32)) {
         self.x = self.x.clamp(0, monitor.0.saturating_sub(panel.0).max(0));
         self.y = self.y.clamp(0, monitor.1.saturating_sub(panel.1).max(0));
@@ -221,7 +236,11 @@ impl Config {
         } else {
             self.corner_radius
         };
-        let strength = if self.liquid { self.refraction } else { 0.0 };
+        let strength = if self.liquid && self.theme == "glass" {
+            self.refraction
+        } else {
+            0.0
+        };
         format!(
             r##"// Only include from the optional niri-lyricglass compositor.
 layer-rule {{
@@ -347,10 +366,10 @@ binds {{
             .args(["validate", "--config"])
             .arg(&path)
             .output()
-            .context("Falta niri-lyricglass: ejecutar compositor/build.sh")?;
+            .context("Missing niri-lyricglass: run compositor/build.sh")?;
         anyhow::ensure!(
             output.status.success(),
-            "Configuracion rechazada: {}",
+            "Configuration rejected: {}",
             String::from_utf8_lossy(&output.stderr)
         );
     }
@@ -381,10 +400,10 @@ impl Shortcuts {
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b == b'+' || b == b'_')
             {
-                bail!("Atajo no valido: {key}");
+                bail!("Invalid shortcut: {key}");
             }
             if !seen.insert(key.to_ascii_lowercase()) {
-                bail!("Atajo repetido: {key}");
+                bail!("Duplicate shortcut: {key}");
             }
             text.push_str(&format!(
                 "    {key} allow-inhibiting=false {{ spawn {exe} \"{action}\"; }}\n"
@@ -405,7 +424,7 @@ pub fn install_shortcuts(shortcuts: &Shortcuts) -> Result<()> {
     let niri_dir = base.config_dir().join("niri");
     let config_path = niri_dir.join("config.kdl");
     let original =
-        std::fs::read_to_string(&config_path).context("No se encontro la configuracion de Niri")?;
+        std::fs::read_to_string(&config_path).context("Niri configuration was not found")?;
     let target = dir().join("shortcuts.kdl");
     let include = format!(
         "include {}",
@@ -433,7 +452,7 @@ pub fn install_shortcuts(shortcuts: &Shortcuts) -> Result<()> {
             .output()?;
         if !output.status.success() {
             bail!(
-                "Niri rechazo los atajos: {}",
+                "Niri rejected the shortcuts: {}",
                 String::from_utf8_lossy(&output.stderr)
             );
         }

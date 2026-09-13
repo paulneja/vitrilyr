@@ -462,5 +462,21 @@
   "Desktop window": [
     "Desktop window",
     "桌面窗口"
+  ],
+  "Glass": [
+    "Vidrio",
+    "玻璃"
+  ],
+  "Custom color": [
+    "Color personalizado",
+    "自定义颜色"
+  ],
+  "Settings file": [
+    "Archivo de ajustes",
+    "设置文件"
+  ],
+  "Settings exported": [
+    "Ajustes exportados",
+    "设置已导出"
   ]
 }

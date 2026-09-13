@@ -11,6 +11,22 @@ pub fn run() -> glib::ExitCode {
         .flags(gio::ApplicationFlags::HANDLES_COMMAND_LINE)
         .build();
     let current: Rc<RefCell<Option<Rc<Ui>>>> = Rc::new(RefCell::new(None));
+    let config_action = gio::SimpleAction::new("apply-config", Some(glib::VariantTy::STRING));
+    let target = current.clone();
+    config_action.connect_activate(move |_, parameter| {
+        if let Some(json) = parameter.and_then(|v| v.str())
+            && let Ok(config) = lyricglass::config::Config::decode(json.as_bytes())
+            && let Some(ui) = target.borrow().as_ref()
+        {
+            ui.change(|c| *c = config);
+            let settings = ui.settings.borrow_mut().take();
+            if let Some(window) = settings {
+                window.close();
+                crate::settings::open(ui);
+            }
+        }
+    });
+    app.add_action(&config_action);
     app.connect_command_line(move |app, cli| {
         let args = match Args::try_parse_from(cli.arguments()) {
             Ok(args) => args,
@@ -46,6 +62,15 @@ pub fn run() -> glib::ExitCode {
             None if starting && ui.config.borrow().start_hidden => ui.set_visible(false),
             Some(Command::Show) | None => ui.set_visible(true),
             Some(Command::Settings) => crate::settings::open(&ui),
+            Some(Command::Language { language }) => {
+                ui.change(|c| c.language = language);
+                let settings = ui.settings.borrow_mut().take();
+                if let Some(window) = settings {
+                    window.close();
+                    crate::settings::open(&ui);
+                }
+            }
+            Some(Command::Style { style }) => ui.change(|c| c.theme = style),
             Some(Command::GameMode) => ui.game_mode(),
             Some(Command::Layout { mode }) => ui.change(|c| {
                 c.square = matches!(mode, crate::Layout::Square);

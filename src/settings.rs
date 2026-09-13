@@ -395,6 +395,50 @@ pub fn open(ui: &Rc<Ui>) {
     row(&content, tr("Reset appearance"), &reset);
     let content = page(&pages, "usage", tr("Behavior"));
     section(&content, tr("Startup"));
+    let backup = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    for (save, icon, title) in [
+        (true, "document-save-symbolic", "Export settings"),
+        (false, "document-open-symbolic", "Import settings"),
+    ] {
+        let button = crate::ui::button(icon, tr(title));
+        ui.on_button(&button, move |ui| {
+            let chooser = gtk::FileDialog::builder()
+                .title(tr(title))
+                .modal(true)
+                .build();
+            let filter = gtk::FileFilter::new();
+            filter.set_name(Some("JSON"));
+            filter.add_pattern("*.json");
+            let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
+            filters.append(&filter);
+            chooser.set_filters(Some(&filters));
+            if save {
+                chooser.set_initial_name(Some("lyricglass-settings.json"));
+            }
+            let weak = Rc::downgrade(ui);
+            let parent = ui.window.clone();
+            glib::MainContext::default().spawn_local(async move {
+                let result = if save {
+                    chooser.save_future(Some(&parent)).await
+                } else {
+                    chooser.open_future(Some(&parent)).await
+                };
+                if let Ok(file) = result
+                    && let Some(path) = file.path()
+                    && let Some(ui) = weak.upgrade()
+                {
+                    let preference = if save {
+                        Preference::Export(path, ui.config.borrow().clone())
+                    } else {
+                        Preference::Import(path)
+                    };
+                    let _ = ui.backend.preferences.send(preference);
+                }
+            });
+        });
+        backup.append(&button);
+    }
+    row(&content, tr("Settings file"), &backup);
     let language = gtk::DropDown::from_strings(&["English", "Español", "简体中文"]);
     language.set_selected(match config.language.as_str() {
         "es" => 1,

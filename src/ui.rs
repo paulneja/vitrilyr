@@ -4,6 +4,7 @@ use crate::{
     lyric_view::LyricView,
 };
 use gtk::{gdk, gio, glib, prelude::*};
+#[cfg(feature = "wayland")]
 use gtk4_layer_shell::LayerShell;
 use lyricglass::{
     config::Config,
@@ -433,6 +434,7 @@ impl Ui {
         let selected = (0..monitors.n_items())
             .filter_map(|i| monitors.item(i)?.downcast::<gdk::Monitor>().ok())
             .find(|m| m.connector().as_deref() == Some(config.monitor.as_str()));
+        #[cfg(feature = "wayland")]
         if self.platform.is_layer() {
             self.window.set_monitor(selected.as_ref());
         }
@@ -562,6 +564,13 @@ impl Ui {
         match event {
             Event::Shortcuts(keys) => self.change(|c| c.shortcuts = keys),
             Event::Startup(enabled) => self.change(|c| c.autostart = enabled),
+            Event::Imported(mut config) => {
+                config.autostart = self.config.borrow().autostart;
+                self.change(|c| *c = *config);
+                if let Some(window) = self.settings.borrow_mut().take() {
+                    window.destroy();
+                }
+            }
             Event::Player(_) if self.demo => {}
             Event::Player(PlayerEvent::State(snapshot)) => self.update(*snapshot),
             Event::Player(PlayerEvent::Unavailable) => {

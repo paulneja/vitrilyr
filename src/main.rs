@@ -83,6 +83,24 @@ pub enum Command {
     InstallShortcuts,
     /// Prepare the optional Niri Liquid Glass session and preview.
     PrepareLiquid,
+    /// Choose the interface language (English is the default).
+    Language {
+        #[arg(value_parser = ["en", "es", "zh"])]
+        language: String,
+    },
+    /// Choose an appearance style.
+    Style {
+        #[arg(value_parser = ["glass", "dark", "light", "contrast", "minimal"])]
+        style: String,
+    },
+    /// Export preferences to a JSON file.
+    ExportConfig {
+        path: std::path::PathBuf,
+    },
+    /// Import preferences; does not change login startup.
+    ImportConfig {
+        path: std::path::PathBuf,
+    },
     /// Enable or disable automatic startup at graphical login.
     Autostart {
         #[arg(value_parser = ["on", "off"])]
@@ -110,12 +128,29 @@ fn main() -> gtk::glib::ExitCode {
             let mut config = lyricglass::config::Config::load();
             config.autostart = enabled;
             tokio::runtime::Runtime::new()?.block_on(config.save())?;
+            lyricglass::startup::notify_config(&config)?;
             Ok(())
         })();
         return cli_result(result);
     }
     if matches!(args.command, Some(Command::AutostartRun)) {
         return cli_result(lyricglass::startup::run());
+    }
+    if let Some(Command::ExportConfig { path }) = &args.command {
+        return cli_result((|| {
+            tokio::runtime::Runtime::new()?
+                .block_on(lyricglass::config::Config::load().export(path))
+        })());
+    }
+    if let Some(Command::ImportConfig { path }) = &args.command {
+        return cli_result((|| -> anyhow::Result<()> {
+            let runtime = tokio::runtime::Runtime::new()?;
+            let mut config = runtime.block_on(lyricglass::config::Config::read_from(path))?;
+            config.autostart = lyricglass::config::Config::load().autostart;
+            runtime.block_on(config.save())?;
+            lyricglass::startup::notify_config(&config)?;
+            Ok(())
+        })());
     }
     if matches!(args.command, Some(Command::PrepareLiquid)) {
         return match lyricglass::config::prepare_liquid() {

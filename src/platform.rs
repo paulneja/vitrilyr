@@ -1,4 +1,5 @@
 use gtk::{gdk, prelude::*};
+#[cfg(feature = "wayland")]
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use lyricglass::config::Config;
 use std::cell::RefCell;
@@ -9,6 +10,7 @@ use x11rb::{
 };
 
 pub enum Platform {
+    #[cfg_attr(not(feature = "wayland"), allow(dead_code))]
     LayerShell,
     X11(Box<RefCell<X11>>),
     Managed,
@@ -23,6 +25,7 @@ pub struct X11 {
 
 impl Platform {
     pub fn detect() -> Self {
+        #[cfg(feature = "wayland")]
         if gtk4_layer_shell::is_supported() {
             return Self::LayerShell;
         }
@@ -50,6 +53,7 @@ impl Platform {
             Self::Managed => "Desktop window",
         }
     }
+    #[cfg(feature = "wayland")]
     pub fn is_layer(&self) -> bool {
         matches!(self, Self::LayerShell)
     }
@@ -84,6 +88,7 @@ impl Platform {
         actions
     }
     pub fn setup(&self, window: &impl IsA<gtk::Window>, settings: bool) {
+        #[cfg(feature = "wayland")]
         if self.is_layer() {
             window.init_layer_shell();
             window.set_namespace(Some(if settings {
@@ -98,11 +103,12 @@ impl Platform {
             } else {
                 KeyboardMode::None
             });
-        } else {
-            window.set_decorated(settings || matches!(self, Self::Managed));
+            return;
         }
+        window.set_decorated(settings || matches!(self, Self::Managed));
     }
     pub fn position(&self, window: &gtk::ApplicationWindow, config: &Config) {
+        #[cfg(feature = "wayland")]
         if self.is_layer() {
             window.set_exclusive_zone(if config.free_position { -1 } else { 0 });
             window.set_anchor(Edge::Left, config.free_position);
@@ -127,7 +133,9 @@ impl Platform {
                     0
                 },
             );
-        } else if let Self::X11(x11) = self
+            return;
+        }
+        if let Self::X11(x11) = self
             && let Err(error) = x11.borrow_mut().position(window, config)
         {
             tracing::debug!(%error, "X11 geometry update failed");
