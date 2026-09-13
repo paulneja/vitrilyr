@@ -1,3 +1,4 @@
+use crate::i18n::tr;
 use gtk::{cairo, pango, prelude::*};
 use lyricglass::{lrc, lyrics::Lyrics};
 use std::{
@@ -20,6 +21,11 @@ struct Presentation {
     compact: bool,
     square: bool,
     animate: bool,
+    font_family: String,
+    spacing: i32,
+    transition: f64,
+    secondary: f64,
+    light: bool,
 }
 impl LyricView {
     pub fn new() -> Self {
@@ -29,7 +35,7 @@ impl LyricView {
             .build();
         let state = Rc::new(RefCell::new(Presentation {
             lyrics: None,
-            message: "Esperando a Spotify".into(),
+            message: tr("Waiting for Spotify").into(),
             active: None,
             from: None,
             changed: Instant::now(),
@@ -37,6 +43,11 @@ impl LyricView {
             compact: false,
             square: false,
             animate: true,
+            font_family: "Sans".into(),
+            spacing: 9,
+            transition: 0.2,
+            secondary: 0.35,
+            light: false,
         }));
         let drawn = state.clone();
         widget.set_draw_func(move |_, cr, width, height| drawn.borrow().draw(cr, width, height));
@@ -51,8 +62,17 @@ impl LyricView {
         self.widget.set_content_height(if square {
             size * 2 + 12
         } else {
-            (size + 9) * if compact { 1 } else { 3 }
+            (size + state.spacing) * if compact { 1 } else { 3 }
         });
+        self.widget.queue_draw();
+    }
+    pub fn appearance(&self, config: &lyricglass::config::Config) {
+        let mut state = self.state.borrow_mut();
+        state.font_family = config.font_family.clone();
+        state.spacing = config.line_spacing;
+        state.transition = f64::from(config.transition_ms) / 1000.0;
+        state.secondary = config.secondary_opacity;
+        state.light = config.theme == "light";
         self.widget.queue_draw();
     }
     pub fn set(&self, lyrics: Option<Lyrics>, message: &str) {
@@ -84,7 +104,7 @@ impl LyricView {
                     .update_property(&[gtk::accessible::Property::Label(&text)]);
             }
             self.widget.queue_draw();
-        } else if state.animate && state.changed.elapsed() < Duration::from_millis(220) {
+        } else if state.animate && state.changed.elapsed().as_secs_f64() < state.transition + 0.02 {
             self.widget.queue_draw();
         }
     }
@@ -111,11 +131,11 @@ impl Presentation {
             let text = self
                 .active
                 .map(|i| lines[i].text.as_str())
-                .unwrap_or("Inicio instrumental");
+                .unwrap_or(tr("Instrumental intro"));
             self.text(
                 cr,
                 if text.is_empty() {
-                    "Instrumental"
+                    tr("Instrumental")
                 } else {
                     text
                 },
@@ -123,7 +143,7 @@ impl Presentation {
                 f64::from(height) / 2.0,
                 self.size,
                 if self.animate {
-                    (self.changed.elapsed().as_secs_f64() / 0.2).clamp(0.3, 1.0)
+                    (self.changed.elapsed().as_secs_f64() / self.transition).clamp(0.3, 1.0)
                 } else {
                     1.0
                 },
@@ -132,7 +152,7 @@ impl Presentation {
             return;
         }
         let progress = if self.animate {
-            (self.changed.elapsed().as_secs_f64() / 0.2).min(1.0)
+            (self.changed.elapsed().as_secs_f64() / self.transition).min(1.0)
         } else {
             1.0
         };
@@ -145,7 +165,7 @@ impl Presentation {
         } else {
             target
         };
-        let row = f64::from(self.size + 9);
+        let row = f64::from(self.size + self.spacing);
         let start = (center.floor() as i64 - 2).max(-1);
         let end = (center.ceil() as i64 + 2).min(lines.len() as i64 - 1);
         for index in start..=end {
@@ -157,18 +177,18 @@ impl Presentation {
             if self.compact && index as f64 != target {
                 continue;
             }
-            let alpha = (0.98 - distance * 0.63).clamp(0.0, 0.98);
+            let alpha = (0.98 - distance * (0.98 - self.secondary)).clamp(0.0, 0.98);
             let alpha = if !sequential && progress < 1.0 {
                 alpha * (0.3 + 0.7 * eased)
             } else {
                 alpha
             };
             let text = if index == -1 {
-                "Inicio instrumental"
+                tr("Instrumental intro")
             } else {
                 let text = &lines[index as usize].text;
                 if text.is_empty() {
-                    "Instrumental"
+                    tr("Instrumental")
                 } else {
                     text
                 }
@@ -190,7 +210,8 @@ impl Presentation {
         bold: bool,
     ) {
         let layout = pangocairo::functions::create_layout(cr);
-        let mut font = pango::FontDescription::from_string("Sans");
+        let mut font = pango::FontDescription::new();
+        font.set_family(&self.font_family);
         font.set_absolute_size(f64::from(size) * f64::from(pango::SCALE));
         font.set_weight(if bold {
             pango::Weight::Semibold
@@ -208,10 +229,14 @@ impl Presentation {
         }
         layout.set_alignment(pango::Alignment::Center);
         let (_, height) = layout.pixel_size();
-        cr.set_source_rgba(0.0, 0.0, 0.0, opacity * 0.6);
+        cr.set_source_rgba(0.0, 0.0, 0.0, if self.light { 0.0 } else { opacity * 0.6 });
         cr.move_to(0.0, y - f64::from(height) / 2.0 + 1.0);
         pangocairo::functions::show_layout(cr, &layout);
-        cr.set_source_rgba(0.945, 0.945, 0.953, opacity);
+        if self.light {
+            cr.set_source_rgba(0.094, 0.094, 0.106, opacity);
+        } else {
+            cr.set_source_rgba(0.945, 0.945, 0.953, opacity);
+        }
         cr.move_to(0.0, y - f64::from(height) / 2.0);
         pangocairo::functions::show_layout(cr, &layout);
     }

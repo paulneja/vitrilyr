@@ -1,3 +1,4 @@
+use crate::i18n::tr;
 use crate::{Args, Command, ui::Ui};
 use clap::Parser;
 use gtk::{gio, glib, prelude::*};
@@ -42,6 +43,7 @@ pub fn run() -> glib::ExitCode {
             Some(Command::Toggle) if starting => ui.set_visible(true),
             Some(Command::Toggle) => ui.toggle(),
             Some(Command::Hide) => ui.set_visible(false),
+            None if starting && ui.config.borrow().start_hidden => ui.set_visible(false),
             Some(Command::Show) | None => ui.set_visible(true),
             Some(Command::Settings) => crate::settings::open(&ui),
             Some(Command::GameMode) => ui.game_mode(),
@@ -91,7 +93,7 @@ pub fn run() -> glib::ExitCode {
             }
             Some(Command::Demo) => {}
             _ => {
-                cli.printerr_literal("Argumento no valido\n");
+                cli.printerr_literal(tr("Invalid argument\n"));
                 return glib::ExitCode::FAILURE;
             }
         }

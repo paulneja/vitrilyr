@@ -1,0 +1,466 @@
+{
+  "Settings": [
+    "Ajustes",
+    "设置"
+  ],
+  "Close": [
+    "Cerrar",
+    "关闭"
+  ],
+  "LyricGlass · Settings": [
+    "LyricGlass · Ajustes",
+    "LyricGlass · 设置"
+  ],
+  "Appearance": [
+    "Apariencia",
+    "外观"
+  ],
+  "Frosted": [
+    "Esmerilado",
+    "磨砂"
+  ],
+  "Liquid Glass": [
+    "Liquid Glass",
+    "液态玻璃"
+  ],
+  "Material": [
+    "Material",
+    "材质"
+  ],
+  "Reflections": [
+    "Reflejos",
+    "反光"
+  ],
+  "Glass curvature": [
+    "Curvatura del vidrio",
+    "玻璃曲率"
+  ],
+  "Refraction · Niri Liquid": [
+    "Refracción · Niri Liquid",
+    "折射 · Niri Liquid"
+  ],
+  "Normal": [
+    "Normal",
+    "标准"
+  ],
+  "Line": [
+    "Línea",
+    "单行"
+  ],
+  "Square": [
+    "Cuadrado",
+    "方形"
+  ],
+  "Layout": [
+    "Diseño",
+    "布局"
+  ],
+  "Square size": [
+    "Lado del cuadrado",
+    "方形尺寸"
+  ],
+  "Width": [
+    "Ancho",
+    "宽度"
+  ],
+  "Opacity": [
+    "Opacidad",
+    "不透明度"
+  ],
+  "Lyric size": [
+    "Tamaño de letra",
+    "歌词字号"
+  ],
+  "Edge distance": [
+    "Distancia al borde",
+    "边缘距离"
+  ],
+  "Corners": [
+    "Esquinas",
+    "圆角"
+  ],
+  "Mint": [
+    "Menta",
+    "薄荷绿"
+  ],
+  "Blue": [
+    "Azul",
+    "蓝色"
+  ],
+  "Rose": [
+    "Rosa",
+    "玫瑰色"
+  ],
+  "Gold": [
+    "Dorado",
+    "金色"
+  ],
+  "Accent": [
+    "Acento",
+    "强调色"
+  ],
+  "Artwork": [
+    "Carátula",
+    "专辑封面"
+  ],
+  "Playback controls": [
+    "Controles de música",
+    "播放控件"
+  ],
+  "Progress bar": [
+    "Barra de progreso",
+    "进度条"
+  ],
+  "Animations": [
+    "Animaciones",
+    "动画"
+  ],
+  "Behavior": [
+    "Uso",
+    "行为"
+  ],
+  "Position": [
+    "Posición",
+    "位置"
+  ],
+  "Top": [
+    "Arriba",
+    "顶部"
+  ],
+  "Bottom": [
+    "Abajo",
+    "底部"
+  ],
+  "Free": [
+    "Libre",
+    "自由"
+  ],
+  "Place freely": [
+    "Colocar libremente",
+    "自由放置"
+  ],
+  "Drag": [
+    "Arrastrar",
+    "拖动"
+  ],
+  "Center at top": [
+    "Centrar arriba",
+    "顶部居中"
+  ],
+  "Reset position": [
+    "Restablecer posición",
+    "重置位置"
+  ],
+  "Automatic": [
+    "Automático",
+    "自动"
+  ],
+  "Monitor": [
+    "Pantalla",
+    "显示器"
+  ],
+  "While gaming": [
+    "Durante el juego",
+    "游戏时"
+  ],
+  "Click through": [
+    "Dejar pasar los clics",
+    "鼠标穿透"
+  ],
+  "Hide when idle": [
+    "Ocultar cuando no hay musica",
+    "空闲时隐藏"
+  ],
+  "Show / hide": [
+    "Mostrar / ocultar",
+    "显示 / 隐藏"
+  ],
+  "Overlay": [
+    "Overlay",
+    "悬浮窗口"
+  ],
+  "Playback": [
+    "Reproduccion",
+    "播放"
+  ],
+  "Previous": [
+    "Anterior",
+    "上一首"
+  ],
+  "Back 10 seconds": [
+    "Retroceder 10 segundos",
+    "后退 10 秒"
+  ],
+  "Play / pause": [
+    "Reproducir / pausar",
+    "播放 / 暂停"
+  ],
+  "Forward 10 seconds": [
+    "Adelantar 10 segundos",
+    "前进 10 秒"
+  ],
+  "Next": [
+    "Siguiente",
+    "下一首"
+  ],
+  "Spotify volume": [
+    "Volumen de Spotify",
+    "Spotify 音量"
+  ],
+  "Milliseconds; positive advances lyrics": [
+    "Milisegundos; positivo adelanta las letras",
+    "毫秒；正值使歌词提前"
+  ],
+  "Lyric offset (ms)": [
+    "Desfase de letra (ms)",
+    "歌词偏移（毫秒）"
+  ],
+  "Search again": [
+    "Volver a buscar",
+    "重新搜索"
+  ],
+  "Lyrics": [
+    "Letras",
+    "歌词"
+  ],
+  "Shortcuts": [
+    "Atajos",
+    "快捷键"
+  ],
+  "Global shortcuts": [
+    "Atajos globales",
+    "全局快捷键"
+  ],
+  "Open settings": [
+    "Abrir ajustes",
+    "打开设置"
+  ],
+  "Game mode": [
+    "Modo de juego",
+    "游戏模式"
+  ],
+  "Apply shortcuts in Niri": [
+    "Aplicar atajos en Niri",
+    "应用 Niri 快捷键"
+  ],
+  "Validating shortcuts with Niri...": [
+    "Validando atajos con Niri...",
+    "正在验证 Niri 快捷键…"
+  ],
+  "Quit LyricGlass": [
+    "Salir de LyricGlass",
+    "退出 LyricGlass"
+  ],
+  "Disconnected": [
+    "Sin conexion",
+    "未连接"
+  ],
+  "Full lyrics": [
+    "Letra completa",
+    "完整歌词"
+  ],
+  "Hide": [
+    "Ocultar",
+    "隐藏"
+  ],
+  "Drag to position": [
+    "Arrastrar para colocar",
+    "拖动以调整位置"
+  ],
+  "Playback position": [
+    "Posicion de reproduccion",
+    "播放位置"
+  ],
+  "Searching for lyrics": [
+    "Buscando letras",
+    "正在查找歌词"
+  ],
+  "Spotify is not running": [
+    "Spotify no esta abierto",
+    "Spotify 未运行"
+  ],
+  "Waiting": [
+    "En espera",
+    "等待中"
+  ],
+  "Your music appears here": [
+    "Tu musica aparece aqui",
+    "音乐将在这里显示"
+  ],
+  "Unsynchronized lyrics available": [
+    "Letra disponible sin sincronizacion",
+    "有未同步歌词"
+  ],
+  "Instrumental": [
+    "Instrumental",
+    "纯音乐"
+  ],
+  "No lyrics for this track": [
+    "No hay letras para esta cancion",
+    "这首歌曲暂无歌词"
+  ],
+  "Spotify  ·  Unsynchronized lyrics": [
+    "Spotify  ·  Letra sin tiempos",
+    "Spotify  ·  未同步歌词"
+  ],
+  "Lyrics unavailable": [
+    "Letras no disponibles",
+    "歌词不可用"
+  ],
+  "Could not load lyrics": [
+    "Sin conexion con las letras",
+    "无法加载歌词"
+  ],
+  "Pause": [
+    "Pausar",
+    "暂停"
+  ],
+  "Play": [
+    "Reproducir",
+    "播放"
+  ],
+  "  ·  Paused": [
+    "  ·  En pausa",
+    "  ·  已暂停"
+  ],
+  "No lyrics available": [
+    "No hay letras disponibles",
+    "暂无歌词"
+  ],
+  "Preview": [
+    "Vista de prueba",
+    "预览"
+  ],
+  "Waiting for Spotify": [
+    "Esperando a Spotify",
+    "等待 Spotify"
+  ],
+  "Instrumental intro": [
+    "Inicio instrumental",
+    "前奏"
+  ],
+  "Invalid argument\n": [
+    "Argumento no valido\n",
+    "参数无效\n"
+  ],
+  "Startup": [
+    "Inicio",
+    "启动"
+  ],
+  "Start at login": [
+    "Iniciar al entrar",
+    "登录时启动"
+  ],
+  "Start hidden": [
+    "Iniciar oculto",
+    "启动时隐藏"
+  ],
+  "Window backend": [
+    "Motor de ventana",
+    "窗口后端"
+  ],
+  "Language": [
+    "Idioma",
+    "语言"
+  ],
+  "Style": [
+    "Estilo",
+    "样式"
+  ],
+  "Dark": [
+    "Oscuro",
+    "深色"
+  ],
+  "Light": [
+    "Claro",
+    "浅色"
+  ],
+  "High contrast": [
+    "Alto contraste",
+    "高对比度"
+  ],
+  "Minimal": [
+    "Minimalista",
+    "极简"
+  ],
+  "Font family": [
+    "Fuente",
+    "字体"
+  ],
+  "Lyrics only": [
+    "Solo letras",
+    "仅显示歌词"
+  ],
+  "Neighboring lines": [
+    "Líneas vecinas",
+    "相邻歌词"
+  ],
+  "Hide when paused": [
+    "Ocultar al pausar",
+    "暂停时隐藏"
+  ],
+  "Always on top": [
+    "Siempre encima",
+    "总在最前"
+  ],
+  "Lock position": [
+    "Fijar posición",
+    "锁定位置"
+  ],
+  "Line spacing": [
+    "Espaciado",
+    "行间距"
+  ],
+  "Transition (ms)": [
+    "Duración de animación",
+    "过渡时间（毫秒）"
+  ],
+  "Secondary opacity": [
+    "Opacidad secundaria",
+    "次要歌词透明度"
+  ],
+  "Reset appearance": [
+    "Restablecer aspecto",
+    "重置外观"
+  ],
+  "Reset": [
+    "Restablecer",
+    "重置"
+  ],
+  "Export settings": [
+    "Exportar ajustes",
+    "导出设置"
+  ],
+  "Import settings": [
+    "Importar ajustes",
+    "导入设置"
+  ],
+  "Save": [
+    "Guardar",
+    "保存"
+  ],
+  "Cancel": [
+    "Cancelar",
+    "取消"
+  ],
+  "Open": [
+    "Abrir",
+    "打开"
+  ],
+  "Save shortcuts": [
+    "Aplicar atajos",
+    "保存快捷键"
+  ],
+  "Desktop": [
+    "Escritorio",
+    "桌面"
+  ],
+  "Wayland layer-shell": [
+    "Wayland layer-shell",
+    "Wayland 图层协议"
+  ],
+  "Desktop window": [
+    "Desktop window",
+    "桌面窗口"
+  ]
+}

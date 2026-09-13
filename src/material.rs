@@ -49,7 +49,8 @@ impl Material {
         Self { widget, state }
     }
     pub fn configure(&self, config: &Config, animations: bool) {
-        self.widget.set_visible(config.liquid);
+        self.widget
+            .set_visible(config.liquid && config.theme == "glass");
         let mut state = self.state.borrow_mut();
         state.radius = f64::from(config.liquid_radius);
         state.opacity = config.opacity;

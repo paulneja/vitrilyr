@@ -1,9 +1,10 @@
+use crate::i18n::tr;
 use crate::{
     backend::{Backend, Event, Load, Preference},
     lyric_view::LyricView,
 };
 use gtk::{gdk, gio, glib, prelude::*};
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
+use gtk4_layer_shell::LayerShell;
 use lyricglass::{
     config::Config,
     lyrics::Lyrics,
@@ -17,6 +18,7 @@ use std::{
 };
 
 pub struct Ui {
+    pub platform: crate::platform::Platform,
     pub window: gtk::ApplicationWindow,
     pub config: RefCell<Config>,
     pub backend: Backend,
@@ -61,10 +63,9 @@ pub fn button(icon: &str, tooltip: &str) -> gtk::Button {
 
 impl Ui {
     pub fn new(app: &gtk::Application, demo: bool) -> anyhow::Result<Rc<Self>> {
-        anyhow::ensure!(
-            gtk4_layer_shell::is_supported(),
-            "LyricGlass requiere Wayland y un compositor compatible con layer-shell (por ejemplo Niri)."
-        );
+        let config = Config::load();
+        crate::i18n::set_language(&config.language);
+        let platform = crate::platform::Platform::detect();
         let (backend, events) = Backend::start()?;
         let window = gtk::ApplicationWindow::builder()
             .application(app)
@@ -73,11 +74,7 @@ impl Ui {
             .resizable(false)
             .build();
         window.add_css_class("lyricglass");
-        window.init_layer_shell();
-        window.set_namespace(Some("lyricglass"));
-        window.set_layer(Layer::Overlay);
-        window.set_keyboard_mode(KeyboardMode::None);
-        window.set_exclusive_zone(0);
+        platform.setup(&window, false);
         let glass = gtk::Box::new(gtk::Orientation::Vertical, 4);
         glass.add_css_class("glass");
         let header = gtk::Box::new(gtk::Orientation::Horizontal, 12);
@@ -101,20 +98,20 @@ impl Ui {
         metadata.set_valign(gtk::Align::Center);
         let title = label("LyricGlass", "track-title");
         let artist = label("Spotify", "artist");
-        let source = label("Sin conexion", "source");
+        let source = label(tr("Disconnected"), "source");
         for item in [&title, &artist, &source] {
             metadata.append(item);
         }
         header.append(&metadata);
         let controls = gtk::Box::new(gtk::Orientation::Horizontal, 2);
         controls.set_valign(gtk::Align::Center);
-        let previous = button("media-skip-backward-symbolic", "Anterior");
-        let play = button("media-playback-start-symbolic", "Reproducir / pausar");
+        let previous = button("media-skip-backward-symbolic", tr("Previous"));
+        let play = button("media-playback-start-symbolic", tr("Play / pause"));
         play.add_css_class("play");
-        let next = button("media-skip-forward-symbolic", "Siguiente");
-        let full_lyrics = button("view-list-symbolic", "Letra completa");
-        let settings = button("emblem-system-symbolic", "Ajustes");
-        let hide = button("window-minimize-symbolic", "Ocultar");
+        let next = button("media-skip-forward-symbolic", tr("Next"));
+        let full_lyrics = button("view-list-symbolic", tr("Full lyrics"));
+        let settings = button("emblem-system-symbolic", tr("Settings"));
+        let hide = button("window-minimize-symbolic", tr("Hide"));
         for item in [&previous, &play, &next, &full_lyrics, &settings, &hide] {
             controls.append(item);
         }
@@ -122,7 +119,7 @@ impl Ui {
         move_handle.set_pixel_size(16);
         move_handle.set_size_request(28, 28);
         move_handle.set_cursor_from_name(Some("grab"));
-        move_handle.set_tooltip_text(Some("Arrastrar para colocar"));
+        move_handle.set_tooltip_text(Some(tr("Drag to position")));
         controls.append(&move_handle);
         header.append(&controls);
         glass.append(&header);
@@ -136,7 +133,7 @@ impl Ui {
         progress.set_draw_value(false);
         progress.set_focusable(false);
         progress.set_sensitive(false);
-        progress.set_tooltip_text(Some("Posicion de reproduccion"));
+        progress.set_tooltip_text(Some(tr("Playback position")));
         glass.append(&progress);
         let surface = gtk::Overlay::new();
         let material = crate::material::Material::new(&surface);
@@ -156,9 +153,10 @@ impl Ui {
         notice.set_xalign(0.0);
         notice.add_css_class("status");
         let ui = Rc::new(Self {
+            platform,
             window,
             backend,
-            config: RefCell::new(Config::load()),
+            config: RefCell::new(config),
             settings: RefCell::new(None),
             notice,
             snapshot: RefCell::new(None),
@@ -202,8 +200,14 @@ impl Ui {
         ui.on_button(&full_lyrics, |ui| ui.show_lyrics());
         let drag = gtk::GestureDrag::new();
         let weak = Rc::downgrade(&ui);
-        drag.connect_drag_begin(move |_, _, _| {
+        drag.connect_drag_begin(move |gesture, _, _| {
             if let Some(ui) = weak.upgrade() {
+                if ui.config.borrow().lock_position {
+                    return;
+                }
+                if ui.platform.begin_move(&ui.window, gesture) {
+                    return;
+                }
                 ui.begin_drag();
             }
         });
@@ -236,6 +240,7 @@ impl Ui {
         ui.window.connect_map(move |_| {
             if let Some(ui) = weak.upgrade() {
                 ui.apply_input_region();
+                ui.platform.position(&ui.window, &ui.config.borrow());
             }
         });
         let weak = Rc::downgrade(&ui);
@@ -254,6 +259,17 @@ impl Ui {
                 ui.event(event);
             }
             ui.flush_seek();
+            for action in ui.platform.actions() {
+                match action.as_str() {
+                    "toggle" => ui.toggle(),
+                    "settings" => crate::settings::open(&ui),
+                    "game-mode" => ui.game_mode(),
+                    "play-pause" => ui.media(MediaCommand::PlayPause),
+                    "previous" => ui.media(MediaCommand::Previous),
+                    "next" => ui.media(MediaCommand::Next),
+                    _ => {}
+                }
+            }
             glib::ControlFlow::Continue
         });
         let weak = Rc::downgrade(&ui);
@@ -315,6 +331,7 @@ impl Ui {
     }
     pub fn place(&self) {
         self.change(|c| {
+            c.lock_position = false;
             c.free_position = true;
             c.click_through = false;
         });
@@ -358,8 +375,7 @@ impl Ui {
         let mut config = self.config.borrow_mut();
         config.x = (config.x + dx.round() as i32).clamp(0, (width - self.window.width()).max(0));
         config.y = (config.y + dy.round() as i32).clamp(0, (height - self.window.height()).max(0));
-        self.window.set_margin(Edge::Left, config.x);
-        self.window.set_margin(Edge::Top, config.y);
+        self.platform.position(&self.window, &config);
     }
     fn visibility(&self) {
         let hide_idle = self.config.borrow().hide_idle;
@@ -368,8 +384,14 @@ impl Ui {
             .borrow()
             .as_ref()
             .is_none_or(|s| s.track.title.is_empty() || s.playback == Playback::Stopped);
+        let paused = self.config.borrow().hide_paused
+            && self
+                .snapshot
+                .borrow()
+                .as_ref()
+                .is_some_and(|s| s.playback == Playback::Paused);
         self.window
-            .set_visible(self.visible.get() && !(hide_idle && idle));
+            .set_visible(self.visible.get() && !(hide_idle && idle) && !paused);
     }
     fn apply_input_region(&self) {
         if let Some(surface) = self.window.surface() {
@@ -381,6 +403,10 @@ impl Ui {
         }
     }
     pub fn configure(&self) {
+        crate::i18n::set_language(&self.config.borrow().language);
+        if let Err(error) = self.platform.shortcuts(&self.config.borrow().shortcuts) {
+            self.notice.set_text(&error.to_string());
+        }
         let bounds = self.monitor_size();
         {
             let mut config = self.config.borrow_mut();
@@ -407,7 +433,9 @@ impl Ui {
         let selected = (0..monitors.n_items())
             .filter_map(|i| monitors.item(i)?.downcast::<gdk::Monitor>().ok())
             .find(|m| m.connector().as_deref() == Some(config.monitor.as_str()));
-        self.window.set_monitor(selected.as_ref());
+        if self.platform.is_layer() {
+            self.window.set_monitor(selected.as_ref());
+        }
         let max_width = selected
             .or_else(|| {
                 monitors
@@ -462,39 +490,17 @@ impl Ui {
             label.set_xalign(if config.square { 0.5 } else { 0.0 });
         }
         self.cover.set_visible(config.show_artwork);
+        self.header.set_visible(!config.lyrics_only);
+        self.toolbar_slot.set_visible(narrow && !config.lyrics_only);
+        self.move_handle.set_visible(!config.lock_position);
         for button in &self.transport {
             button.set_visible(config.show_controls);
         }
         self.progress.set_visible(config.show_progress);
         self.view.widget.set_vexpand(config.square);
-        self.window
-            .set_exclusive_zone(if config.free_position { -1 } else { 0 });
-        self.window.set_anchor(Edge::Left, config.free_position);
-        self.window
-            .set_margin(Edge::Left, if config.free_position { config.x } else { 0 });
-        self.window
-            .set_anchor(Edge::Top, config.free_position || !config.bottom);
-        self.window
-            .set_anchor(Edge::Bottom, !config.free_position && config.bottom);
-        self.window.set_margin(
-            Edge::Top,
-            if config.free_position {
-                config.y
-            } else if config.bottom {
-                0
-            } else {
-                config.margin
-            },
-        );
-        self.window.set_margin(
-            Edge::Bottom,
-            if !config.free_position && config.bottom {
-                config.margin
-            } else {
-                0
-            },
-        );
+        self.platform.position(&self.window, &config);
         let system_motion = gtk::Settings::default().is_none_or(|s| s.is_gtk_enable_animations());
+        self.view.appearance(&config);
         self.view.configure(
             if config.square {
                 config
@@ -503,11 +509,12 @@ impl Ui {
             } else {
                 config.font_size
             },
-            config.compact,
+            config.compact || !config.show_context,
             config.square,
             config.animations && system_motion,
         );
         let accent = match config.accent.as_str() {
+            "custom" => &config.custom_accent,
             "blue" => "#9bc6f4",
             "rose" => "#efa5be",
             "gold" => "#e2cc8b",
@@ -515,7 +522,12 @@ impl Ui {
         };
         self.material
             .configure(&config, config.animations && system_motion);
-        if config.liquid {
+        for style in ["glass", "dark", "light", "contrast", "minimal"] {
+            self.window.remove_css_class(&format!("theme-{style}"));
+        }
+        self.window
+            .add_css_class(&format!("theme-{}", config.theme));
+        if config.liquid && config.theme == "glass" {
             self.window.add_css_class("liquid");
         } else {
             self.window.remove_css_class("liquid");
@@ -531,13 +543,14 @@ impl Ui {
             self.window.add_css_class("no-motion");
         }
         drop(config);
+        crate::i18n::refresh(&self.window);
         self.apply_input_region();
         self.visibility();
         self.tick();
     }
     pub fn retry(&self) {
         if let Some(snapshot) = self.snapshot.borrow().as_ref() {
-            self.view.set(None, "Buscando letras");
+            self.view.set(None, tr("Searching for lyrics"));
             let _ = self.backend.loads.send(Load {
                 generation: self.generation.get(),
                 track: snapshot.track.clone(),
@@ -548,6 +561,7 @@ impl Ui {
     fn event(&self, event: Event) {
         match event {
             Event::Shortcuts(keys) => self.change(|c| c.shortcuts = keys),
+            Event::Startup(enabled) => self.change(|c| c.autostart = enabled),
             Event::Player(_) if self.demo => {}
             Event::Player(PlayerEvent::State(snapshot)) => self.update(*snapshot),
             Event::Player(PlayerEvent::Unavailable) => {
@@ -556,9 +570,9 @@ impl Ui {
                     self.lyrics.borrow_mut().take();
                 }
                 self.title.set_text("LyricGlass");
-                self.artist.set_text("Spotify no esta abierto");
-                self.source.set_text("En espera");
-                self.view.set(None, "Tu musica aparece aqui");
+                self.artist.set_text(tr("Spotify is not running"));
+                self.source.set_text(tr("Waiting"));
+                self.view.set(None, tr("Your music appears here"));
                 self.clear_art();
                 self.controls(false, false, false, false);
                 self.progress.set_value(0.0);
@@ -574,13 +588,13 @@ impl Ui {
                     Ok(lyrics) => {
                         let message = match &lyrics {
                             Lyrics::Synced(_) => "",
-                            Lyrics::Plain(_) => "Letra disponible sin sincronizacion",
-                            Lyrics::Instrumental => "Instrumental",
-                            Lyrics::Missing => "No hay letras para esta cancion",
+                            Lyrics::Plain(_) => tr("Unsynchronized lyrics available"),
+                            Lyrics::Instrumental => tr("Instrumental"),
+                            Lyrics::Missing => tr("No lyrics for this track"),
                         };
                         self.source.set_text(match &lyrics {
                             Lyrics::Synced(_) => "Spotify  ·  LRCLIB",
-                            Lyrics::Plain(_) => "Spotify  ·  Letra sin tiempos",
+                            Lyrics::Plain(_) => tr("Spotify  ·  Unsynchronized lyrics"),
                             _ => "Spotify",
                         });
                         self.view.set(Some(lyrics.clone()), message);
@@ -588,8 +602,8 @@ impl Ui {
                         self.tick();
                     }
                     Err(error) => {
-                        self.source.set_text("Letras no disponibles");
-                        self.view.set(None, "Sin conexion con las letras");
+                        self.source.set_text(tr("Lyrics unavailable"));
+                        self.view.set(None, tr("Could not load lyrics"));
                         self.notice.set_text(&error);
                         self.source.set_tooltip_text(Some(&error));
                     }
@@ -643,9 +657,9 @@ impl Ui {
             self.title.set_tooltip_text(Some(&snapshot.track.title));
             self.artist.set_text(&snapshot.track.artist());
             self.artist.set_tooltip_text(Some(&snapshot.track.artist()));
-            self.source.set_text("Buscando letras");
+            self.source.set_text(tr("Searching for lyrics"));
             self.source.set_tooltip_text(None);
-            self.view.set(None, "Buscando letras");
+            self.view.set(None, tr("Searching for lyrics"));
             let _ = self.backend.loads.send(Load {
                 generation: self.generation.get(),
                 track: snapshot.track.clone(),
@@ -661,11 +675,11 @@ impl Ui {
             "media-playback-start-symbolic"
         });
         self.play
-            .set_tooltip_text(Some(if playing { "Pausar" } else { "Reproducir" }));
+            .set_tooltip_text(Some(if playing { tr("Pause") } else { tr("Play") }));
         self.artist.set_text(&format!(
             "{}{}",
             snapshot.track.artist(),
-            if playing { "" } else { "  ·  En pausa" }
+            if playing { "" } else { tr("  ·  Paused") }
         ));
         self.controls(
             snapshot.can_control
@@ -684,6 +698,9 @@ impl Ui {
     }
     fn tick(&self) {
         self.material.tick();
+        if matches!(self.platform, crate::platform::Platform::X11(_)) && self.window.is_mapped() {
+            self.platform.position(&self.window, &self.config.borrow());
+        }
         if self.window.is_mapped() && !self.dragging.get() {
             let bounds = self.monitor_size();
             let mut config = self.config.borrow_mut();
@@ -691,8 +708,7 @@ impl Ui {
             if config.free_position {
                 config.clamp_position(bounds, (self.window.width(), self.window.height()));
                 if previous != (config.x, config.y) {
-                    self.window.set_margin(Edge::Left, config.x);
-                    self.window.set_margin(Edge::Top, config.y);
+                    self.platform.position(&self.window, &config);
                     let _ = self
                         .backend
                         .preferences
@@ -740,6 +756,7 @@ impl Ui {
     pub fn status(&self) -> String {
         let snapshot = self.snapshot.borrow();
         serde_json::json!({"visible":self.window.is_visible(),"click_through":self.config.borrow().click_through,
+            "backend":self.platform.name(),
             "spotify": snapshot.is_some(),"title":snapshot.as_ref().map(|s| &s.track.title),
             "playback":snapshot.as_ref().map(|s| s.playback),"position":snapshot.as_ref().map(|s| s.position_at(Instant::now()).as_secs_f64()),
             "duration":snapshot.as_ref().map(|s|s.track.duration().as_secs_f64()),
@@ -778,10 +795,10 @@ impl Ui {
                 .collect::<Vec<_>>()
                 .join("\n\n"),
             Some(Lyrics::Plain(text)) => text.clone(),
-            Some(Lyrics::Instrumental) => "Instrumental".into(),
-            _ => "No hay letras disponibles".into(),
+            Some(Lyrics::Instrumental) => tr("Instrumental").into(),
+            _ => tr("No lyrics available").into(),
         };
-        let window = crate::settings::dialog(self, "Letra completa", 500, 650);
+        let window = crate::settings::dialog(self, tr("Full lyrics"), 500, 650);
         let label = gtk::Label::new(Some(&text));
         label.set_wrap(true);
         label.set_selectable(true);
@@ -823,7 +840,7 @@ impl Ui {
         self.generation.set(self.generation.get() + 1);
         self.event(Event::Lyrics(self.generation.get(),Ok(Lyrics::Synced(lyricglass::lrc::parse(
             "[00:00.00]A quiet moment\n[00:04.00]Let the music stay with you\n[00:09.00]One line at a time\n[00:14.00]A little room for music\n[00:19.00]Wherever the evening goes")))));
-        self.source.set_text("Vista de prueba");
+        self.source.set_text(tr("Preview"));
     }
 }
 

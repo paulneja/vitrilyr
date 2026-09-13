@@ -1,6 +1,6 @@
+use crate::i18n::tr;
 use crate::{backend::Preference, ui::Ui};
 use gtk::{gdk, glib, prelude::*};
-use gtk4_layer_shell::{KeyboardMode, Layer, LayerShell};
 use lyricglass::{
     config::{Config, Shortcuts},
     state::MediaCommand,
@@ -21,16 +21,12 @@ pub fn dialog(ui: &Ui, title: &str, width: i32, height: i32) -> gtk::Window {
         .resizable(false)
         .build();
     window.add_css_class("preferences");
-    window.init_layer_shell();
-    window.set_namespace(Some("lyricglass-settings"));
-    window.set_layer(Layer::Overlay);
-    window.set_exclusive_zone(0);
-    window.set_keyboard_mode(KeyboardMode::OnDemand);
+    ui.platform.setup(&window, true);
     let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let header = gtk::HeaderBar::new();
     header.set_title_widget(Some(&gtk::Label::new(Some(title))));
     header.set_show_title_buttons(false);
-    let close = crate::ui::button("window-close-symbolic", "Cerrar");
+    let close = crate::ui::button("window-close-symbolic", tr("Close"));
     let weak = window.downgrade();
     close.connect_clicked(move |_| {
         if let Some(window) = weak.upgrade() {
@@ -68,7 +64,7 @@ pub fn open(ui: &Rc<Ui>) {
         return;
     }
     let config = ui.config.borrow().clone();
-    let window = dialog(ui, "LyricGlass · Ajustes", 500, 680);
+    let window = dialog(ui, tr("LyricGlass · Settings"), 500, 680);
     let pages = gtk::Stack::new();
     pages.set_vexpand(true);
     pages.set_vhomogeneous(false);
@@ -81,12 +77,33 @@ pub fn open(ui: &Rc<Ui>) {
     let layout = gtk::Box::new(gtk::Orientation::Vertical, 0);
     layout.append(&navigation);
     layout.append(&pages);
-    let content = page(&pages, "appearance", "Aspecto");
-    section(&content, "Apariencia");
+    let content = page(&pages, "appearance", tr("Appearance"));
+    section(&content, tr("Appearance"));
+    let style = gtk::DropDown::from_strings(&[
+        tr("Glass"),
+        tr("Dark"),
+        tr("Light"),
+        tr("High contrast"),
+        tr("Minimal"),
+    ]);
+    let styles = ["glass", "dark", "light", "contrast", "minimal"];
+    style.set_selected(styles.iter().position(|s| *s == config.theme).unwrap_or(0) as u32);
+    let weak = Rc::downgrade(ui);
+    style.connect_selected_notify(move |dropdown| {
+        if let Some(ui) = weak.upgrade() {
+            ui.change(|c| {
+                c.theme = styles
+                    .get(dropdown.selected() as usize)
+                    .unwrap_or(&"glass")
+                    .to_string()
+            });
+        }
+    });
+    row(&content, tr("Style"), &style);
     let materials = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     materials.add_css_class("linked");
-    let frosted = gtk::ToggleButton::with_label("Esmerilado");
-    let liquid = gtk::ToggleButton::with_label("Liquid Glass");
+    let frosted = gtk::ToggleButton::with_label(tr("Frosted"));
+    let liquid = gtk::ToggleButton::with_label(tr("Liquid Glass"));
     liquid.set_group(Some(&frosted));
     frosted.set_active(!config.liquid);
     liquid.set_active(config.liquid);
@@ -98,11 +115,11 @@ pub fn open(ui: &Rc<Ui>) {
     });
     materials.append(&frosted);
     materials.append(&liquid);
-    row(&content, "Material", &materials);
+    row(&content, tr("Material"), &materials);
     slider(
         ui,
         &content,
-        "Reflejos",
+        tr("Reflections"),
         config.reflections * 100.0,
         0.0,
         100.0,
@@ -112,7 +129,7 @@ pub fn open(ui: &Rc<Ui>) {
     slider(
         ui,
         &content,
-        "Curvatura del vidrio",
+        tr("Glass curvature"),
         f64::from(config.liquid_radius),
         12.0,
         48.0,
@@ -122,7 +139,7 @@ pub fn open(ui: &Rc<Ui>) {
     slider(
         ui,
         &content,
-        "Refracción · Niri Liquid",
+        tr("Refraction · Niri Liquid"),
         config.refraction,
         0.0,
         16.0,
@@ -132,7 +149,10 @@ pub fn open(ui: &Rc<Ui>) {
     let modes = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     modes.add_css_class("linked");
     let mut first: Option<gtk::ToggleButton> = None;
-    for (index, name) in ["Normal", "Línea", "Cuadrado"].into_iter().enumerate() {
+    for (index, name) in [tr("Normal"), tr("Line"), tr("Square")]
+        .into_iter()
+        .enumerate()
+    {
         let mode = gtk::ToggleButton::with_label(name);
         if let Some(first) = &first {
             mode.set_group(Some(first));
@@ -160,11 +180,11 @@ pub fn open(ui: &Rc<Ui>) {
         });
         modes.append(&mode);
     }
-    row(&content, "Diseño", &modes);
+    row(&content, tr("Layout"), &modes);
     slider(
         ui,
         &content,
-        "Lado del cuadrado",
+        tr("Square size"),
         f64::from(config.square_size),
         240.0,
         440.0,
@@ -174,7 +194,7 @@ pub fn open(ui: &Rc<Ui>) {
     slider(
         ui,
         &content,
-        "Ancho",
+        tr("Width"),
         f64::from(config.width),
         360.0,
         900.0,
@@ -184,7 +204,7 @@ pub fn open(ui: &Rc<Ui>) {
     slider(
         ui,
         &content,
-        "Opacidad",
+        tr("Opacity"),
         config.opacity * 100.0,
         30.0,
         100.0,
@@ -194,7 +214,7 @@ pub fn open(ui: &Rc<Ui>) {
     slider(
         ui,
         &content,
-        "Tamaño de letra",
+        tr("Lyric size"),
         f64::from(config.font_size),
         14.0,
         28.0,
@@ -204,7 +224,7 @@ pub fn open(ui: &Rc<Ui>) {
     slider(
         ui,
         &content,
-        "Distancia al borde",
+        tr("Edge distance"),
         f64::from(config.margin),
         0.0,
         240.0,
@@ -214,7 +234,7 @@ pub fn open(ui: &Rc<Ui>) {
     slider(
         ui,
         &content,
-        "Esquinas",
+        tr("Corners"),
         f64::from(config.corner_radius),
         0.0,
         24.0,
@@ -224,10 +244,10 @@ pub fn open(ui: &Rc<Ui>) {
     let colors = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let mut first: Option<gtk::ToggleButton> = None;
     for (name, title) in [
-        ("mint", "Menta"),
-        ("blue", "Azul"),
-        ("rose", "Rosa"),
-        ("gold", "Dorado"),
+        ("mint", tr("Mint")),
+        ("blue", tr("Blue")),
+        ("rose", tr("Rose")),
+        ("gold", tr("Gold")),
     ] {
         let swatch = gtk::ToggleButton::new();
         swatch.set_tooltip_text(Some(title));
@@ -249,30 +269,186 @@ pub fn open(ui: &Rc<Ui>) {
         });
         colors.append(&swatch);
     }
-    row(&content, "Acento", &colors);
-    toggle(ui, &content, "Carátula", config.show_artwork, |c, v| {
+    row(&content, tr("Accent"), &colors);
+    let custom = gtk::ColorDialogButton::new(Some(gtk::ColorDialog::new()));
+    custom.set_rgba(&gdk::RGBA::parse(&config.custom_accent).expect("Normalized accent"));
+    let weak = Rc::downgrade(ui);
+    custom.connect_rgba_notify(move |button| {
+        if let Some(ui) = weak.upgrade() {
+            let rgba = button.rgba();
+            ui.change(|c| {
+                c.accent = "custom".into();
+                c.custom_accent = format!(
+                    "#{:02x}{:02x}{:02x}",
+                    (rgba.red() * 255.0).round() as u8,
+                    (rgba.green() * 255.0).round() as u8,
+                    (rgba.blue() * 255.0).round() as u8
+                );
+            });
+        }
+    });
+    row(&content, tr("Custom color"), &custom);
+    let font = gtk::FontDialogButton::new(Some(gtk::FontDialog::new()));
+    let mut description = gtk::pango::FontDescription::new();
+    description.set_family(&config.font_family);
+    font.set_font_desc(&description);
+    font.set_size_request(210, -1);
+    let weak = Rc::downgrade(ui);
+    font.connect_font_desc_notify(move |button| {
+        if let Some(ui) = weak.upgrade()
+            && let Some(family) = button.font_desc().and_then(|d| d.family())
+        {
+            ui.change(|c| c.font_family = family.to_string());
+        }
+    });
+    row(&content, tr("Font family"), &font);
+    slider(
+        ui,
+        &content,
+        tr("Line spacing"),
+        f64::from(config.line_spacing),
+        4.0,
+        20.0,
+        1.0,
+        |c, v| c.line_spacing = v as i32,
+    );
+    slider(
+        ui,
+        &content,
+        tr("Transition (ms)"),
+        f64::from(config.transition_ms),
+        100.0,
+        400.0,
+        10.0,
+        |c, v| c.transition_ms = v as i32,
+    );
+    slider(
+        ui,
+        &content,
+        tr("Secondary opacity"),
+        config.secondary_opacity * 100.0,
+        10.0,
+        75.0,
+        1.0,
+        |c, v| c.secondary_opacity = v / 100.0,
+    );
+    toggle(
+        ui,
+        &content,
+        tr("Lyrics only"),
+        config.lyrics_only,
+        |c, v| c.lyrics_only = v,
+    );
+    toggle(
+        ui,
+        &content,
+        tr("Neighboring lines"),
+        config.show_context,
+        |c, v| c.show_context = v,
+    );
+    toggle(ui, &content, tr("Artwork"), config.show_artwork, |c, v| {
         c.show_artwork = v
     });
     toggle(
         ui,
         &content,
-        "Controles de música",
+        tr("Playback controls"),
         config.show_controls,
         |c, v| c.show_controls = v,
     );
     toggle(
         ui,
         &content,
-        "Barra de progreso",
+        tr("Progress bar"),
         config.show_progress,
         |c, v| c.show_progress = v,
     );
-    toggle(ui, &content, "Animaciones", config.animations, |c, v| {
+    toggle(ui, &content, tr("Animations"), config.animations, |c, v| {
         c.animations = v
     });
-    let content = page(&pages, "usage", "Uso");
-    section(&content, "Posición");
-    let position = gtk::DropDown::from_strings(&["Arriba", "Abajo", "Libre"]);
+    let reset = gtk::Button::with_label(tr("Reset"));
+    ui.on_button(&reset, |ui| {
+        ui.change(|c| {
+            let defaults = Config::default();
+            c.theme = defaults.theme;
+            c.font_family = defaults.font_family;
+            c.opacity = defaults.opacity;
+            c.font_size = defaults.font_size;
+            c.line_spacing = defaults.line_spacing;
+            c.transition_ms = defaults.transition_ms;
+            c.secondary_opacity = defaults.secondary_opacity;
+            c.liquid = defaults.liquid;
+            c.liquid_radius = defaults.liquid_radius;
+            c.reflections = defaults.reflections;
+            c.refraction = defaults.refraction;
+            c.corner_radius = defaults.corner_radius;
+            c.accent = defaults.accent;
+            c.custom_accent = defaults.custom_accent;
+            c.show_artwork = true;
+            c.show_controls = true;
+            c.show_progress = true;
+            c.lyrics_only = false;
+            c.show_context = true;
+        });
+        reopen(ui);
+    });
+    row(&content, tr("Reset appearance"), &reset);
+    let content = page(&pages, "usage", tr("Behavior"));
+    section(&content, tr("Startup"));
+    let language = gtk::DropDown::from_strings(&["English", "Español", "简体中文"]);
+    language.set_selected(match config.language.as_str() {
+        "es" => 1,
+        "zh" => 2,
+        _ => 0,
+    });
+    let weak = Rc::downgrade(ui);
+    language.connect_selected_notify(move |dropdown| {
+        if let Some(ui) = weak.upgrade() {
+            ui.change(|c| {
+                c.language = match dropdown.selected() {
+                    1 => "es",
+                    2 => "zh",
+                    _ => "en",
+                }
+                .into()
+            });
+            let weak = Rc::downgrade(&ui);
+            glib::idle_add_local_once(move || {
+                if let Some(ui) = weak.upgrade() {
+                    let window = ui.settings.borrow_mut().take();
+                    if let Some(window) = window {
+                        window.close();
+                    }
+                    open(&ui);
+                }
+            });
+        }
+    });
+    row(&content, tr("Language"), &language);
+    let startup = gtk::Switch::builder().active(config.autostart).build();
+    let weak = Rc::downgrade(ui);
+    startup.connect_active_notify(move |switch| {
+        if let Some(ui) = weak.upgrade() {
+            let mut config = ui.config.borrow().clone();
+            config.autostart = switch.is_active();
+            let _ = ui.backend.preferences.send(Preference::Startup(config));
+        }
+    });
+    row(&content, tr("Start at login"), &startup);
+    toggle(
+        ui,
+        &content,
+        tr("Start hidden"),
+        config.start_hidden,
+        |c, v| c.start_hidden = v,
+    );
+    row(
+        &content,
+        tr("Window backend"),
+        &gtk::Label::new(Some(ui.platform.name())),
+    );
+    section(&content, tr("Position"));
+    let position = gtk::DropDown::from_strings(&[tr("Top"), tr("Bottom"), tr("Free")]);
     position.set_selected(if config.free_position {
         2
     } else {
@@ -287,20 +463,20 @@ pub fn open(ui: &Rc<Ui>) {
             });
         }
     });
-    row(&content, "Posición", &position);
-    let place = gtk::Button::with_label("Colocar libremente");
+    row(&content, tr("Position"), &position);
+    let place = gtk::Button::with_label(tr("Place freely"));
     ui.on_button(&place, |ui| ui.place());
-    row(&content, "Arrastrar", &place);
-    let reset = gtk::Button::with_label("Centrar arriba");
+    row(&content, tr("Drag"), &place);
+    let reset = gtk::Button::with_label(tr("Center at top"));
     ui.on_button(&reset, |ui| {
         ui.change(|c| {
             c.free_position = false;
             c.bottom = false;
         })
     });
-    row(&content, "Restablecer posición", &reset);
+    row(&content, tr("Reset position"), &reset);
     let monitors = WidgetExt::display(&ui.window).monitors();
-    let mut names = vec!["Automático".to_string()];
+    let mut names = vec![tr("Automatic").to_string()];
     for i in 0..monitors.n_items() {
         if let Some(monitor) = monitors
             .item(i)
@@ -328,51 +504,65 @@ pub fn open(ui: &Rc<Ui>) {
             });
         }
     });
-    row(&content, "Pantalla", &display);
-    section(&content, "Durante el juego");
+    row(&content, tr("Monitor"), &display);
+    section(&content, tr("While gaming"));
     toggle(
         ui,
         &content,
-        "Dejar pasar los clics",
+        tr("Lock position"),
+        config.lock_position,
+        |c, v| c.lock_position = v,
+    );
+    toggle(
+        ui,
+        &content,
+        tr("Hide when paused"),
+        config.hide_paused,
+        |c, v| c.hide_paused = v,
+    );
+    toggle(
+        ui,
+        &content,
+        tr("Click through"),
         config.click_through,
         |c, v| c.click_through = v,
     );
     toggle(
         ui,
         &content,
-        "Ocultar cuando no hay musica",
+        tr("Hide when idle"),
         config.hide_idle,
         |c, v| c.hide_idle = v,
     );
-    let visibility = gtk::Button::with_label("Mostrar / ocultar");
+    let visibility = gtk::Button::with_label(tr("Show / hide"));
     ui.on_button(&visibility, |ui| ui.toggle());
-    row(&content, "Overlay", &visibility);
-    section(&content, "Reproduccion");
+    row(&content, tr("Overlay"), &visibility);
+    section(&content, tr("Playback"));
     let media = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     for (icon, title, command) in [
         (
             "media-skip-backward-symbolic",
-            "Anterior",
+            tr("Previous"),
             MediaCommand::Previous,
         ),
         (
             "media-seek-backward-symbolic",
-            "Retroceder 10 segundos",
+            tr("Back 10 seconds"),
             MediaCommand::Seek(-10.0),
         ),
         (
             "media-playback-start-symbolic",
-            "Reproducir / pausar",
+            tr("Play / pause"),
             MediaCommand::PlayPause,
         ),
         (
             "media-seek-forward-symbolic",
-            "Adelantar 10 segundos",
+            tr("Forward 10 seconds"),
             MediaCommand::Seek(10.0),
         ),
         (
             "media-skip-forward-symbolic",
-            "Siguiente",
+            tr("Next"),
             MediaCommand::Next,
         ),
     ] {
@@ -403,33 +593,33 @@ pub fn open(ui: &Rc<Ui>) {
             }
         });
     });
-    row(&content, "Volumen de Spotify", &volume);
+    row(&content, tr("Spotify volume"), &volume);
     let offset = gtk::SpinButton::with_range(-10000.0, 10000.0, 100.0);
     offset.set_value(f64::from(config.lyric_offset_ms));
-    offset.set_tooltip_text(Some("Milisegundos; positivo adelanta las letras"));
+    offset.set_tooltip_text(Some(tr("Milliseconds; positive advances lyrics")));
     let weak = Rc::downgrade(ui);
     offset.connect_value_changed(move |spin| {
         if let Some(ui) = weak.upgrade() {
             ui.change(|c| c.lyric_offset_ms = spin.value_as_int());
         }
     });
-    row(&content, "Desfase de letra (ms)", &offset);
-    let retry = gtk::Button::with_label("Volver a buscar");
+    row(&content, tr("Lyric offset (ms)"), &offset);
+    let retry = gtk::Button::with_label(tr("Search again"));
     ui.on_button(&retry, |ui| ui.retry());
-    row(&content, "Letras", &retry);
-    let content = page(&pages, "shortcuts", "Atajos");
-    section(&content, "Atajos globales");
+    row(&content, tr("Lyrics"), &retry);
+    let content = page(&pages, "shortcuts", tr("Shortcuts"));
+    section(&content, tr("Global shortcuts"));
     let entries: Vec<gtk::Entry> = config
         .shortcuts
         .pairs()
         .iter()
         .zip([
-            "Mostrar / ocultar",
-            "Abrir ajustes",
-            "Modo de juego",
-            "Reproducir / pausar",
-            "Anterior",
-            "Siguiente",
+            tr("Show / hide"),
+            tr("Open settings"),
+            tr("Game mode"),
+            tr("Play / pause"),
+            tr("Previous"),
+            tr("Next"),
         ])
         .map(|((key, _), title)| {
             let entry = gtk::Entry::builder()
@@ -441,7 +631,12 @@ pub fn open(ui: &Rc<Ui>) {
             entry
         })
         .collect();
-    let install = gtk::Button::with_label("Aplicar atajos en Niri");
+    let niri = std::env::var_os("NIRI_SOCKET").is_some();
+    let install = gtk::Button::with_label(tr(if niri {
+        "Apply shortcuts in Niri"
+    } else {
+        "Save shortcuts"
+    }));
     install.add_css_class("suggested-action");
     ui.on_button(&install, move |ui| {
         let values: Vec<String> = entries
@@ -461,8 +656,16 @@ pub fn open(ui: &Rc<Ui>) {
             ui.notice.set_text(&error.to_string());
             return;
         }
-        ui.notice.set_text("Validando atajos con Niri...");
-        let _ = ui.backend.preferences.send(Preference::Install(config));
+        if niri {
+            ui.notice.set_text(tr("Validating shortcuts with Niri..."));
+            let _ = ui.backend.preferences.send(Preference::Install(config));
+        } else {
+            if let Err(error) = ui.platform.shortcuts(&config.shortcuts) {
+                ui.notice.set_text(&error.to_string());
+                return;
+            }
+            ui.change(|c| c.shortcuts = config.shortcuts);
+        }
     });
     content.append(&install);
     if ui.notice.parent().is_some() {
@@ -470,7 +673,7 @@ pub fn open(ui: &Rc<Ui>) {
     }
     ui.notice.set_margin_top(12);
     content.append(&ui.notice);
-    let quit = gtk::Button::with_label("Salir de LyricGlass");
+    let quit = gtk::Button::with_label(tr("Quit LyricGlass"));
     quit.set_margin_top(16);
     ui.on_button(&quit, |ui| {
         if let Some(app) = ui.window.application() {
@@ -488,6 +691,19 @@ pub fn open(ui: &Rc<Ui>) {
     });
     *ui.settings.borrow_mut() = Some(window.clone());
     window.present();
+}
+
+fn reopen(ui: &Rc<Ui>) {
+    let weak = Rc::downgrade(ui);
+    glib::idle_add_local_once(move || {
+        if let Some(ui) = weak.upgrade() {
+            let window = ui.settings.borrow_mut().take();
+            if let Some(window) = window {
+                window.close();
+            }
+            open(&ui);
+        }
+    });
 }
 
 fn page(stack: &gtk::Stack, name: &str, title: &str) -> gtk::Box {

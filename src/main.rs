@@ -1,7 +1,9 @@
 mod app;
 mod backend;
+mod i18n;
 mod lyric_view;
 mod material;
+mod platform;
 mod settings;
 mod ui;
 
@@ -21,7 +23,7 @@ pub enum MaterialMode {
 }
 
 #[derive(Parser)]
-#[command(version, about = "Letras de Spotify sobre tu escritorio Wayland")]
+#[command(version, about = "Spotify lyrics on your Linux desktop")]
 pub struct Args {
     #[command(subcommand)]
     command: Option<Command>,
@@ -29,45 +31,45 @@ pub struct Args {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// Mostrar u ocultar el overlay.
+    /// Show or hide the overlay.
     Toggle,
     Show,
     Hide,
-    /// Abrir los ajustes en vivo.
+    /// Open live settings.
     Settings,
-    /// Alternar el paso de clics al juego.
+    /// Toggle mouse click-through.
     GameMode,
-    /// Elegir normal, line o square.
+    /// Choose a layout.
     Layout {
         mode: Layout,
     },
-    /// Cambiar el material y su refraccion sin abrir ajustes.
+    /// Change the glass material and refraction.
     Material {
         mode: MaterialMode,
         #[arg(long)]
         refraction: Option<f64>,
     },
-    /// Colocar el overlay en coordenadas del monitor seleccionado.
+    /// Position the overlay on the selected monitor.
     Position {
         x: i32,
         y: i32,
     },
-    /// Activar la colocacion libre y permitir arrastrar.
+    /// Enable free placement and dragging.
     Move,
     ResetPosition,
     PlayPause,
     Next,
     Previous,
-    /// Desplazar la reproduccion un numero de segundos.
+    /// Seek by a number of seconds.
     Seek {
         #[arg(allow_hyphen_values = true)]
         seconds: f64,
     },
-    /// Establecer el volumen de Spotify de 0 a 100.
+    /// Set Spotify volume from 0 to 100.
     Volume {
         percent: f64,
     },
-    /// Mostrar el estado actual como JSON.
+    /// Print current state as JSON.
     Status,
     #[command(hide = true)]
     Capture {
@@ -77,11 +79,18 @@ pub enum Command {
     CaptureSettings {
         path: std::path::PathBuf,
     },
-    /// Instalar los atajos configurados, validando primero Niri.
+    /// Install global shortcuts after validating Niri configuration.
     InstallShortcuts,
-    /// Preparar una sesion optativa y una vista previa de Niri Liquid Glass.
+    /// Prepare the optional Niri Liquid Glass session and preview.
     PrepareLiquid,
-    /// Vista de prueba con letras originales; no controla Spotify.
+    /// Enable or disable automatic startup at graphical login.
+    Autostart {
+        #[arg(value_parser = ["on", "off"])]
+        state: String,
+    },
+    #[command(hide = true)]
+    AutostartRun,
+    /// Preview original sample lyrics without controlling Spotify.
     Demo,
     Quit,
 }
@@ -94,6 +103,20 @@ fn main() -> gtk::glib::ExitCode {
         )
         .init();
     let args = Args::parse();
+    if let Some(Command::Autostart { state }) = &args.command {
+        let result = (|| -> anyhow::Result<()> {
+            let enabled = state == "on";
+            lyricglass::startup::set_enabled(enabled)?;
+            let mut config = lyricglass::config::Config::load();
+            config.autostart = enabled;
+            tokio::runtime::Runtime::new()?.block_on(config.save())?;
+            Ok(())
+        })();
+        return cli_result(result);
+    }
+    if matches!(args.command, Some(Command::AutostartRun)) {
+        return cli_result(lyricglass::startup::run());
+    }
     if matches!(args.command, Some(Command::PrepareLiquid)) {
         return match lyricglass::config::prepare_liquid() {
             Ok(()) => gtk::glib::ExitCode::SUCCESS,
@@ -108,7 +131,7 @@ fn main() -> gtk::glib::ExitCode {
             &lyricglass::config::Config::load().shortcuts,
         ) {
             Ok(()) => {
-                println!("Atajos activados en Niri");
+                println!("Shortcuts enabled in Niri");
                 gtk::glib::ExitCode::SUCCESS
             }
             Err(error) => {
@@ -118,4 +141,14 @@ fn main() -> gtk::glib::ExitCode {
         };
     }
     app::run()
+}
+
+fn cli_result(result: anyhow::Result<()>) -> gtk::glib::ExitCode {
+    match result {
+        Ok(()) => gtk::glib::ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("{error:#}");
+            gtk::glib::ExitCode::FAILURE
+        }
+    }
 }

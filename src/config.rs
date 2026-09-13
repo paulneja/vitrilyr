@@ -5,6 +5,19 @@ use std::{path::PathBuf, process::Command};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
+    pub autostart: bool,
+    pub language: String,
+    pub theme: String,
+    pub font_family: String,
+    pub custom_accent: String,
+    pub line_spacing: i32,
+    pub transition_ms: i32,
+    pub secondary_opacity: f64,
+    pub lyrics_only: bool,
+    pub show_context: bool,
+    pub hide_paused: bool,
+    pub lock_position: bool,
+    pub start_hidden: bool,
     pub width: i32,
     pub opacity: f64,
     pub font_size: i32,
@@ -61,6 +74,19 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             width: 580,
+            autostart: true,
+            language: "en".into(),
+            theme: "glass".into(),
+            font_family: "Sans".into(),
+            custom_accent: "#91d5b2".into(),
+            line_spacing: 9,
+            transition_ms: 200,
+            secondary_opacity: 0.35,
+            lyrics_only: false,
+            show_context: true,
+            hide_paused: false,
+            lock_position: false,
+            start_hidden: false,
             opacity: 0.86,
             font_size: 19,
             margin: 16,
@@ -117,6 +143,33 @@ impl Config {
         }
     }
     pub fn normalize(&mut self) {
+        if !["glass", "dark", "light", "contrast", "minimal"].contains(&self.theme.as_str()) {
+            self.theme = "glass".into();
+        }
+        if self.font_family.is_empty()
+            || self.font_family.len() > 120
+            || self.font_family.chars().any(char::is_control)
+        {
+            self.font_family = "Sans".into();
+        }
+        if self.custom_accent.len() != 7
+            || !self.custom_accent.starts_with('#')
+            || !self.custom_accent[1..]
+                .bytes()
+                .all(|c| c.is_ascii_hexdigit())
+        {
+            self.custom_accent = "#91d5b2".into();
+        }
+        self.line_spacing = self.line_spacing.clamp(4, 20);
+        self.transition_ms = self.transition_ms.clamp(100, 400);
+        self.secondary_opacity = if self.secondary_opacity.is_finite() {
+            self.secondary_opacity.clamp(0.1, 0.75)
+        } else {
+            0.35
+        };
+        if !["en", "es", "zh"].contains(&self.language.as_str()) {
+            self.language = "en".into();
+        }
         self.width = self.width.clamp(360, 900);
         self.square_size = self.square_size.clamp(240, 440);
         self.corner_radius = self.corner_radius.clamp(0, 24);

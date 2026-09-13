@@ -13,10 +13,12 @@ pub enum Event {
     Art(u64, Option<Artwork>),
     Notice(String),
     Shortcuts(lyricglass::config::Shortcuts),
+    Startup(bool),
 }
 pub enum Preference {
     Save(Config),
     Install(Config),
+    Startup(Config),
 }
 pub struct Load {
     pub generation: u64,
@@ -67,7 +69,7 @@ impl Backend {
                                 tokio::time::sleep(Duration::from_millis(180)).await;
                                 while let Ok(next) = changes.try_recv() {
                                     change = next;
-                                    if matches!(change, Preference::Install(_)) {
+                                    if !matches!(change, Preference::Save(_)) {
                                         break;
                                     }
                                 }
@@ -75,6 +77,22 @@ impl Backend {
                             let (config, install) = match change {
                                 Preference::Save(c) => (c, false),
                                 Preference::Install(c) => (c, true),
+                                Preference::Startup(c) => {
+                                    let enabled = c.autostart;
+                                    if let Err(error) = tokio::task::spawn_blocking(move || {
+                                        lyricglass::startup::set_enabled(enabled)
+                                    })
+                                    .await
+                                    .unwrap_or_else(|e| Err(e.into()))
+                                    {
+                                        let _ = settings_events.send(Event::Notice(format!(
+                                            "Could not update startup: {error}"
+                                        )));
+                                        continue;
+                                    }
+                                    let _ = settings_events.send(Event::Startup(enabled));
+                                    (c, false)
+                                }
                             };
                             if install {
                                 let keys = config.shortcuts.clone();
@@ -86,12 +104,13 @@ impl Backend {
                                     Ok(Ok(())) => {
                                         let _ = settings_events
                                             .send(Event::Shortcuts(config.shortcuts.clone()));
-                                        let _ = settings_events
-                                            .send(Event::Notice("Atajos activados en Niri".into()));
+                                        let _ = settings_events.send(Event::Notice(
+                                            "Shortcuts enabled in Niri".into(),
+                                        ));
                                     }
                                     result => {
                                         let _ = settings_events.send(Event::Notice(format!(
-                                            "No se pudieron activar los atajos: {result:?}"
+                                            "Could not enable shortcuts: {result:?}"
                                         )));
                                         continue;
                                     }
@@ -99,7 +118,7 @@ impl Backend {
                             }
                             if let Err(error) = config.save().await {
                                 let _ = settings_events.send(Event::Notice(format!(
-                                    "No se guardaron los ajustes: {error}"
+                                    "Could not save settings: {error}"
                                 )));
                             }
                         }

@@ -50,3 +50,18 @@ window.preferences { background: #18181b; color: #f1f1f3; font-family: sans-seri
 .liquid .glass button:hover { background: alpha(white, 0.2); color: white; }
 .liquid .glass button:active { background: alpha(white, 0.28); }
 .liquid .glass scale trough { background: alpha(white, 0.19); }
+.theme-dark .glass { background: #18181b; border-color: #34343b; }
+.theme-light .glass { background: #f5f5f7; border-color: #d8d8dc; color: #18181b; }
+.theme-light .glass .artist, .theme-light .glass .source { color: #6b6b75; }
+.theme-light .glass button { color: #34343b; }
+.theme-light .glass button:hover { background: alpha(black, 0.08); }
+.theme-light .glass button.play { color: #18181b; background: alpha(black, 0.08); }
+.theme-light .glass scale trough { background: alpha(black, 0.15); }
+.theme-contrast .glass { background: black; border: 2px solid white; color: white; }
+.theme-contrast .glass .artist, .theme-contrast .glass .source, .theme-contrast .glass button { color: white; }
+.theme-contrast .glass scale highlight { background: white; }
+.theme-minimal .glass { background: transparent; border-color: transparent; }
+.preferences button { background: #25252a; color: #f1f1f3; border: 1px solid #34343b; box-shadow: none; }
+.preferences button:hover { background: #34343b; }
+.preferences button:checked { background: #34343b; border-color: #91d5b2; }
+.preferences entry { background: #202024; color: #f1f1f3; }
