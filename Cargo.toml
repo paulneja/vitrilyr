@@ -1,0 +1,34 @@
+[package]
+name = "lyricglass"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+license = "MIT"
+description = "A native, synchronized Spotify lyrics overlay for Wayland"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+directories = "6"
+futures-util = "0.3"
+gio = { version = "0.22", features = ["v2_80"] }
+gtk = { package = "gtk4", version = "0.11", features = ["v4_12"] }
+gtk4-layer-shell = "0.8"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+pangocairo = "0.22"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "fs"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+url = "2"
+zbus = { version = "5", default-features = false, features = ["tokio"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = "thin"
+strip = true
