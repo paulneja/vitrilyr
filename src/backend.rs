@@ -1,0 +1,149 @@
+use lyricglass::{
+    config::{self, Config},
+    lyrics::{Artwork, Lyrics, Provider},
+    player::{self, PlayerEvent},
+    state::{MediaCommand, Track},
+};
+use std::{sync::mpsc, time::Duration};
+use tokio::sync::mpsc as async_mpsc;
+
+pub enum Event {
+    Player(PlayerEvent),
+    Lyrics(u64, Result<Lyrics, String>),
+    Art(u64, Option<Artwork>),
+    Notice(String),
+    Shortcuts(lyricglass::config::Shortcuts),
+}
+pub enum Preference {
+    Save(Config),
+    Install(Config),
+}
+pub struct Load {
+    pub generation: u64,
+    pub track: Track,
+    pub force: bool,
+}
+
+pub struct Backend {
+    pub media: async_mpsc::UnboundedSender<MediaCommand>,
+    pub loads: async_mpsc::UnboundedSender<Load>,
+    pub preferences: async_mpsc::UnboundedSender<Preference>,
+}
+
+impl Backend {
+    pub fn start() -> anyhow::Result<(Self, mpsc::Receiver<Event>)> {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()?;
+        let provider = Provider::new()?;
+        let (events, receiver) = mpsc::channel();
+        let (media, mut commands) = async_mpsc::unbounded_channel();
+        let (loads, mut requests) = async_mpsc::unbounded_channel::<Load>();
+        let (preferences, mut changes) = async_mpsc::unbounded_channel::<Preference>();
+        std::thread::Builder::new()
+            .name("lyricglass-worker".into())
+            .spawn(move || {
+                runtime.block_on(async move {
+                    let player_events = events.clone();
+                    tokio::spawn(async move {
+                        while !commands.is_closed() {
+                            if let Err(error) = player::watch(&mut commands, &|event| {
+                                let _ = player_events.send(Event::Player(event));
+                            })
+                            .await
+                            {
+                                tracing::warn!(%error,"MPRIS connection interrupted");
+                                let _ = player_events.send(Event::Player(PlayerEvent::Unavailable));
+                                tokio::time::sleep(Duration::from_secs(3)).await;
+                            }
+                        }
+                    });
+                    let settings_events = events.clone();
+                    tokio::spawn(async move {
+                        while let Some(mut change) = changes.recv().await {
+                            // Coalesce slider motion into one atomic settings write.
+                            if matches!(change, Preference::Save(_)) {
+                                tokio::time::sleep(Duration::from_millis(180)).await;
+                                while let Ok(next) = changes.try_recv() {
+                                    change = next;
+                                    if matches!(change, Preference::Install(_)) {
+                                        break;
+                                    }
+                                }
+                            }
+                            let (config, install) = match change {
+                                Preference::Save(c) => (c, false),
+                                Preference::Install(c) => (c, true),
+                            };
+                            if install {
+                                let keys = config.shortcuts.clone();
+                                match tokio::task::spawn_blocking(move || {
+                                    config::install_shortcuts(&keys)
+                                })
+                                .await
+                                {
+                                    Ok(Ok(())) => {
+                                        let _ = settings_events
+                                            .send(Event::Shortcuts(config.shortcuts.clone()));
+                                        let _ = settings_events
+                                            .send(Event::Notice("Atajos activados en Niri".into()));
+                                    }
+                                    result => {
+                                        let _ = settings_events.send(Event::Notice(format!(
+                                            "No se pudieron activar los atajos: {result:?}"
+                                        )));
+                                        continue;
+                                    }
+                                }
+                            }
+                            if let Err(error) = config.save().await {
+                                let _ = settings_events.send(Event::Notice(format!(
+                                    "No se guardaron los ajustes: {error}"
+                                )));
+                            }
+                        }
+                    });
+                    let mut task: Option<tokio::task::JoinHandle<()>> = None;
+                    while let Some(load) = requests.recv().await {
+                        if let Some(task) = task.take() {
+                            task.abort();
+                        }
+                        let provider = provider.clone();
+                        let events = events.clone();
+                        task = Some(tokio::spawn(async move {
+                            let lyrics = async {
+                                let result = provider
+                                    .lyrics(&load.track, load.force)
+                                    .await
+                                    .map_err(|e| e.to_string());
+                                let _ = events.send(Event::Lyrics(load.generation, result));
+                            };
+                            let artwork = async {
+                                let art = match provider.artwork(&load.track.art_url).await {
+                                    Ok(art) => art,
+                                    Err(error) => {
+                                        tracing::debug!(%error,"Artwork unavailable");
+                                        None
+                                    }
+                                };
+                                let _ = events.send(Event::Art(load.generation, art));
+                            };
+                            tokio::join!(lyrics, artwork);
+                        }));
+                    }
+                    if let Some(task) = task {
+                        task.abort();
+                    }
+                });
+            })?;
+        Ok((
+            Self {
+                media,
+                loads,
+                preferences,
+            },
+            receiver,
+        ))
+    }
+}

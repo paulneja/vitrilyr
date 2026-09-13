@@ -1,0 +1,52 @@
+window.lyricglass { background: transparent; color: #f1f1f3; }
+.glass {
+  background: alpha(#18181b, 0.86);
+  border: 1px solid alpha(white, 0.12);
+  border-radius: 10px;
+  padding: 12px 16px 8px;
+}
+.glass label { font-family: sans-serif; font-size: 13px; }
+.glass .track-title { font-weight: 600; font-size: 14px; }
+.glass .artist { color: #a0a0aa; font-size: 11px; }
+.glass .source { color: #a0a0aa; font-size: 10px; }
+.cover { border-radius: 8px; background: #25252a; }
+.glass button {
+  min-width: 28px; min-height: 28px; padding: 0; margin: 0;
+  border-radius: 6px; border: none; box-shadow: none;
+  background: transparent; color: #a0a0aa; transition: background 120ms ease, color 120ms ease;
+}
+.glass button:hover { background: alpha(white, 0.08); color: #f1f1f3; }
+.glass button:active { background: alpha(white, 0.12); }
+.glass button:disabled { opacity: 0.3; }
+.glass button.play { color: #f1f1f3; background: alpha(white, 0.05); }
+.glass scale { padding: 6px 0 0; min-height: 8px; }
+.glass scale trough { min-height: 3px; background: alpha(white, 0.08); border: 0; }
+.glass scale highlight { min-height: 3px; background: #91d5b2; border: 0; }
+.glass scale slider { min-width: 0; min-height: 0; margin: 0; border: 0; box-shadow: none; background: transparent; }
+.glass scale:hover slider { min-width: 8px; min-height: 8px; margin: -3px; background: #f1f1f3; }
+window.preferences { background: #18181b; color: #f1f1f3; font-family: sans-serif; font-size: 13px; }
+.preferences headerbar { background: #202024; border-bottom: 1px solid #34343b; }
+.preferences .section-title { font-size: 13px; font-weight: 600; margin-top: 16px; margin-bottom: 4px; }
+.preferences .setting-row { min-height: 48px; }
+.preferences .setting-row > label { margin-right: 16px; }
+.preferences .status { color: #a0a0aa; font-size: 11px; }
+.preferences button, .preferences entry, .preferences dropdown { border-radius: 6px; }
+.preferences scale highlight, .preferences switch:checked { background: #91d5b2; }
+.preferences separator { background: #34343b; min-height: 1px; }
+.preferences .plain-lyrics { font-size: 17px; }
+.preferences .swatch { min-width: 24px; min-height: 24px; padding: 0; border: 2px solid transparent; border-radius: 6px; }
+.preferences .swatch:checked { border-color: #f1f1f3; }
+.preferences .swatch.mint { background: #91d5b2; }
+.preferences .swatch.blue { background: #9bc6f4; }
+.preferences .swatch.rose { background: #efa5be; }
+.preferences .swatch.gold { background: #e2cc8b; }
+.no-motion * { transition: none; }
+.liquid .glass { padding: 16px 18px 10px; }
+.liquid.square .glass { padding: 12px 12px 8px; }
+.liquid .glass label { text-shadow: 0 1px 3px alpha(black, 0.65); }
+.liquid .glass .artist, .liquid .glass .source { color: alpha(white, 0.75); }
+.liquid .glass button { border-radius: 12px; color: alpha(white, 0.85); }
+.liquid .glass button.play { background: alpha(white, 0.17); color: white; box-shadow: inset 0 1px alpha(white, 0.2); }
+.liquid .glass button:hover { background: alpha(white, 0.2); color: white; }
+.liquid .glass button:active { background: alpha(white, 0.28); }
+.liquid .glass scale trough { background: alpha(white, 0.19); }

@@ -1,0 +1,18 @@
+[Desktop Entry]
+Type=Application
+Name=LyricGlass
+Comment=Spotify lyrics on your Wayland desktop
+Exec=lyricglass
+Icon=audio-x-generic
+Terminal=false
+Categories=AudioVideo;Audio;
+StartupNotify=false
+Actions=Settings;Toggle;
+
+[Desktop Action Settings]
+Name=Settings
+Exec=lyricglass settings
+
+[Desktop Action Toggle]
+Name=Show / Hide
+Exec=lyricglass toggle
