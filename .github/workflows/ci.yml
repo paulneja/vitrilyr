@@ -1,0 +1,18 @@
+name: Linux
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  portable:
+    runs-on: ubuntu-24.04
+    env:
+      CARGO_BUILD_JOBS: 2
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev pkg-config dbus xvfb fonts-noto-cjk
+      - run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
+      - run: cargo +1.95.0 fmt --check
+      - run: cargo +1.95.0 clippy --no-default-features --all-targets -- -D warnings
+      - run: cargo +1.95.0 test --no-default-features
+      - run: cargo +1.95.0 test --no-default-features --test x11 -- --ignored
+      - run: cargo +1.95.0 build --release --no-default-features --locked

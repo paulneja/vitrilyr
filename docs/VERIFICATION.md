@@ -1,58 +1,88 @@
 # Verification
 
-Verified on Arch Linux with Rust 1.95.0, GTK 4.22.4,
-gtk4-layer-shell C library 1.3.0 and Niri 26.04.
+Last local verification: 2026-09-13. Arch Linux x86_64, Rust 1.95.0,
+GTK 4.22.4, gtk4-layer-shell C library 1.3.0 and Niri 26.04.
 
-- `cargo fmt --check`: passed.
-- `cargo check`: passed.
-- `cargo clippy --all-targets --all-features -- -D warnings`: passed.
-- `cargo test`: 14 unit tests and 1 private-D-Bus integration test passed.
-- `cargo build --release`: passed.
-- Actual Spotify detected dynamically; artwork and synchronized LRCLIB lyrics
-  loaded, playback state and track changes observed.
-- Real Spotify's unsigned duration and string track ID verified and covered by
-  a regression test.
-- Real layer-shell surface verified with `niri msg --json layers`: overlay layer,
-  namespace `lyricglass`, keyboard interactivity `None`.
-- Shortcut/effects include installed only after full `niri validate` succeeded;
-  original config backed up. CLI hide/show and single-instance delivery checked.
-- Normal, narrow line and 280 x 280 square layouts rendered and inspected.
-- Square layout and free coordinates survived a process restart.
-- Settings tabs rendered and inspected using GTK's own snapshot API.
+## Automated coverage
 
-The integration test uses a separate D-Bus daemon and covers Spotify absent,
-starting, play/pause, next/previous, relative and absolute seeking, volume,
-closing and reacquiring its bus name. It never controls the user's Spotify.
-Unit tests also cover malformed metadata/LRC/cache, offline stale-cache fallback,
-negative caching, missing artwork, plain lyrics and instrumental states.
+- Formatting and strict Clippy with all features.
+- Formatting and strict Clippy without the optional layer-shell feature.
+- 19 unit tests plus one private-D-Bus MPRIS integration test.
+- One additional native X11 integration test, explicitly enabled with
+  `cargo test --test x11 -- --ignored`.
+- Native X11 test also passes with `--no-default-features`.
+- Release build, desktop-entry validation and user-service syntax validation.
 
-`square.png`, `line.png`, and `settings.png` are native widget renders, not web
-mockups. Widget-only captures do not include Niri's live background blur.
+The unit suite covers LRC timestamps, repeated tags, simultaneous lines, empty
+sections, offsets, seeking, malformed metadata, bounded cache reads, offline
+fallback, negative caching, settings migration/ranges, import validation,
+executable-path quoting, shortcut parsing and localization completeness.
 
-The user's session locked during final visual checks. Free-position commands and
-persistence were verified; the physical pointer drag still needs an unlocked
-session for end-to-end verification. Multi-monitor dragging was not tested;
-placement is intentionally constrained to the monitor selected in preferences.
+The MPRIS integration test uses its own bus and covers Spotify absent, starting,
+play/pause, next/previous, relative and absolute seek, volume, closing and
+reacquiring its bus name. It never sends commands to the user's Spotify.
 
-## Liquid Glass, 2026-09-13
+The X11 integration test launches actual GTK windows inside a private Xvfb and
+D-Bus session. It verifies:
 
-- Pinned Niri-glass integration and replacement optical shader compiled in release.
-- Separate `niri-lyricglass` installed; stock Niri binary was not replaced.
-- Nested Wayland session rendered the real GTK overlay over the optical grid.
-  No shader compilation errors were logged. The preview exited normally on request.
-- Comparing refraction 0/6 changed pixels in an interior bevel strip; the checked
+- All five styles produce nonblank native snapshots.
+- Normal, Line and Square layouts render; the minimum square is exactly 240 x 240.
+- English, Spanish and Simplified Chinese preferences render and switch live.
+- Coordinate commands reach the real X11 window.
+- Injected mouse motion drags the grip to the expected position and saves it.
+- The EWMH above hint is present.
+- Injected F7 presses hide and show the window.
+- Click-through creates an empty native input region.
+- Settings import/export updates a running instance and preserves startup choice.
+
+Screenshots in `screenshots/` are native widget captures with original sample
+lyrics, not browser mockups. They exclude background blur and refraction.
+The test uses temporary settings and cannot enable the real login service.
+
+## Real session checks
+
+Actual Spotify discovery, artwork and synchronized LRCLIB lyrics were verified
+in the normal local session. Unsigned Spotify duration and string track IDs are
+covered by a regression test. Starting, pausing and track changes were observed.
+
+Niri reported a real overlay layer with namespace `lyricglass` and keyboard
+interactivity `None`. CLI hide/show, single-instance delivery, normal/line/square
+layouts, minimum square size and free-position persistence were checked.
+The shortcut installer validates the complete Niri configuration before adding
+the include and preserves an original backup.
+
+The user installer was run end to end. The permanent `lyricglass.service` is
+enabled and running, replacing the temporary launch unit. The installed desktop
+and autostart entries and systemd unit passed their validators; `niri validate`
+also passed. Disabling and reenabling login startup left the same application
+process running. Existing appearance, placement and shortcut settings survived
+the update. The installed app reports English, the native Wayland layer backend,
+real Spotify playback and synchronized lyrics. An actual reboot/login cycle has
+not been performed.
+
+## Optional refraction
+
+- The pinned Niri-glass integration and replacement optical shader built in release.
+- `niri-lyricglass` was installed separately; stock Niri was not replaced.
+- A nested Wayland session rendered the real GTK overlay over an optical grid.
+- Comparing refraction 0/6 changed pixels in an interior bevel strip; a checked
   900 x 300 region outside the panel had exactly zero pixel difference.
-- `liquid-optics.png` includes the actual compositor effect, not a mockup.
-- Minimum square reports exactly 240 x 240 after the layout fix.
-  `liquid-square.png` and `liquid-settings.png` are native GTK snapshots.
-- Free positioning was exercised during the nested preview and persisted.
-- App release/check/format/strict Clippy passed; all 15 tests passed.
-- Updated app installed and restarted without stopping Spotify. Existing position,
-  appearance and shortcut preferences were retained. Stock-compatible corner/shadow
-  rules were installed only after full Niri validation.
+- `liquid-optics.png` includes the actual compositor effect.
+- Free placement was exercised and persisted in the nested preview.
+- The preview uses a private bus with no external service activation.
 
-The optional compositor was not tested as the main DRM session, in games, on
-multiple monitors or at fractional scale. Full refraction needs that separate
-session. The optical preview uses a private D-Bus and original demo lyrics.
-It does not demonstrate live Spotify inside the optional compositor; actual
-Spotify integration remains verified in the ordinary running app.
+## Remaining coverage
+
+No claim is made of full desktop testing on GNOME, Plasma, Sway, Hyprland,
+Windows, macOS or every Linux distribution. The managed Wayland fallback compiles
+but has not been exercised in a complete GNOME session.
+
+Xvfb has no window manager, so the test does not prove that every desktop honors
+always-on-top or that shortcuts work under exclusive game input. Multiple
+monitors, unusual keyboard maps, fractional scaling and fullscreen games remain
+manual-test gaps.
+
+The optional compositor was not tested as the primary DRM session, in games or
+on multiple monitors. Full refraction requires that separate session. Live
+Spotify was verified in the normal session, not inside the isolated optical
+preview. Hosted CI has not been run locally.
