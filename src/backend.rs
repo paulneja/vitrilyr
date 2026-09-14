@@ -66,15 +66,20 @@ impl Backend {
                     });
                     let settings_events = events.clone();
                     tokio::spawn(async move {
-                        while let Some(mut change) = changes.recv().await {
+                        let mut pending = None;
+                        while let Some(mut change) = match pending.take() {
+                            Some(change) => Some(change),
+                            None => changes.recv().await,
+                        } {
                             // Coalesce slider motion into one atomic settings write.
                             if matches!(change, Preference::Save(_)) {
                                 tokio::time::sleep(Duration::from_millis(180)).await;
                                 while let Ok(next) = changes.try_recv() {
-                                    change = next;
-                                    if !matches!(change, Preference::Save(_)) {
+                                    if !matches!(next, Preference::Save(_)) {
+                                        pending = Some(next);
                                         break;
                                     }
+                                    change = next;
                                 }
                             }
                             let (config, install) = match change {
@@ -92,6 +97,10 @@ impl Backend {
                                     continue;
                                 }
                                 Preference::Export(path, config) => {
+                                    if let Err(error) = config.save().await {
+                                        let _ =
+                                            settings_events.send(Event::Notice(error.to_string()));
+                                    }
                                     let notice = match config.export(&path).await {
                                         Ok(()) => "Settings exported".into(),
                                         Err(error) => error.to_string(),

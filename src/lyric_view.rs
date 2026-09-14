@@ -225,7 +225,7 @@ impl Presentation {
         layout.set_single_paragraph_mode(!self.square);
         if self.square {
             layout.set_wrap(pango::WrapMode::WordChar);
-            layout.set_height(((y * 2.0 - 4.0).max(f64::from(size)) as i32) * pango::SCALE);
+            layout.set_height(-2);
         }
         layout.set_alignment(pango::Alignment::Center);
         let (_, height) = layout.pixel_size();

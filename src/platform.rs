@@ -213,6 +213,13 @@ impl X11 {
             xproto::AtomEnum::ATOM,
             &[above, skip],
         )?;
+        // Mapped windows must also ask the window manager to change EWMH state.
+        self.connection.send_event(
+            false,
+            self.root,
+            xproto::EventMask::SUBSTRUCTURE_REDIRECT | xproto::EventMask::SUBSTRUCTURE_NOTIFY,
+            xproto::ClientMessageEvent::new(32, xid, state, [1, above, skip, 1, 0]),
+        )?;
         self.connection.change_property32(
             PropMode::REPLACE,
             xid,

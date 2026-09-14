@@ -481,6 +481,30 @@ pub fn install_shortcuts(shortcuts: &Shortcuts) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn settings_backups_are_bounded_and_normalized() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.json");
+        let config = Config {
+            language: "zh".into(),
+            theme: "light".into(),
+            font_family: "Noto Sans CJK SC".into(),
+            ..Default::default()
+        };
+        config.export(&path).await.unwrap();
+        let restored = Config::read_from(&path).await.unwrap();
+        assert_eq!(restored.language, "zh");
+        assert_eq!(restored.font_family, "Noto Sans CJK SC");
+        assert!(Config::decode(&vec![b' '; 128 * 1024 + 1]).is_err());
+        assert!(Config::decode(b"not json").is_err());
+        let invalid = Config::decode(br##"{"language":"bad","theme":"broken","custom_accent":"#bad;{}","font_family":"bad\nfont","line_spacing":999,"transition_ms":1}"##).unwrap();
+        assert_eq!(invalid.language, "en");
+        assert_eq!(invalid.theme, "glass");
+        assert_eq!(invalid.custom_accent, "#91d5b2");
+        assert_eq!(invalid.font_family, "Sans");
+        assert_eq!(invalid.line_spacing, 20);
+        assert_eq!(invalid.transition_ms, 100);
+    }
     #[test]
     fn liquid_settings_migrate_without_changing_layout() {
         let mut config: Config =

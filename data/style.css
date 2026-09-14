@@ -55,6 +55,9 @@ window.preferences { background: #18181b; color: #f1f1f3; font-family: sans-seri
 .theme-light .glass .artist, .theme-light .glass .source { color: #6b6b75; }
 .theme-light .glass button { color: #34343b; }
 .theme-light .glass button:hover { background: alpha(black, 0.08); }
+.theme-light .cover { color: #f1f1f3; }
+.glass .drag-handle { color: #a0a0aa; }
+.theme-light .glass .drag-handle { color: #34343b; }
 .theme-light .glass button.play { color: #18181b; background: alpha(black, 0.08); }
 .theme-light .glass scale trough { background: alpha(black, 0.15); }
 .theme-contrast .glass { background: black; border: 2px solid white; color: white; }

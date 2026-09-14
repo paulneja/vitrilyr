@@ -116,7 +116,8 @@ impl Ui {
         for item in [&previous, &play, &next, &full_lyrics, &settings, &hide] {
             controls.append(item);
         }
-        let move_handle = gtk::Image::from_icon_name("transform-move-symbolic");
+        let move_handle = gtk::Image::from_icon_name("list-drag-handle-symbolic");
+        move_handle.add_css_class("drag-handle");
         move_handle.set_pixel_size(16);
         move_handle.set_size_request(28, 28);
         move_handle.set_cursor_from_name(Some("grab"));
@@ -766,7 +767,8 @@ impl Ui {
         let snapshot = self.snapshot.borrow();
         serde_json::json!({"visible":self.window.is_visible(),"click_through":self.config.borrow().click_through,
             "backend":self.platform.name(),
-            "spotify": snapshot.is_some(),"title":snapshot.as_ref().map(|s| &s.track.title),
+            "spotify": snapshot.is_some() && !self.demo,"demo":self.demo,"title":snapshot.as_ref().map(|s| &s.track.title),
+            "language":self.config.borrow().language,"theme":self.config.borrow().theme,
             "playback":snapshot.as_ref().map(|s| s.playback),"position":snapshot.as_ref().map(|s| s.position_at(Instant::now()).as_secs_f64()),
             "duration":snapshot.as_ref().map(|s|s.track.duration().as_secs_f64()),
             "can_seek":snapshot.as_ref().is_some_and(|s|s.can_seek),
