@@ -21,6 +21,12 @@ position resynchronization runs every two seconds, with a monotonic clock betwee
 updates. Slider writes are coalesced without discarding queued import/install
 operations.
 
+The exported application action state holds the current normalized preferences,
+so CLI backups do not depend on a delayed file write. A worker-queue barrier
+finishes pending writes on normal shutdown, including SIGINT/SIGTERM service
+stops, with a three-second maximum wait. Forced kills and power loss cannot use
+that graceful shutdown path.
+
 ## Checks
 
 ```sh

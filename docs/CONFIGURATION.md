@@ -3,7 +3,9 @@
 Open Preferences with `lyricglass settings` or Shift+F7 where global shortcuts
 are configured. Changes apply live and save after a short debounce. English is
 the default; Behavior offers Spanish and Simplified Chinese. Song text and
-artist names are never translated.
+artist names are never translated, including their tooltips. External commands
+refresh open preferences without changing the active tab. Normal exit and service
+stop wait up to three seconds for pending preference writes to finish.
 
 ## Appearance
 
@@ -32,8 +34,10 @@ complete lyrics view. Artwork, playback buttons, progress, neighboring lines
 and metadata can be hidden independently or through lyrics-only mode.
 
 Dark and Light use solid surfaces; their opacity does not follow the Glass
-slider. Minimal removes the drawn panel background, though compositor blur
-rules may still affect the surface behind it. System reduced-motion settings
+slider. Minimal removes the drawn panel background. Generated Niri rules disable
+blur for non-glass styles and remove Minimal's shadow; separately configured
+desktop rules may override this. High contrast keeps neighboring lyrics at least
+75% opaque. System reduced-motion settings
 are honored in addition to the app's animation toggle.
 
 Reset appearance restores visual defaults without changing language, startup,
@@ -60,6 +64,12 @@ coordinates cannot override compositor policy. See [compatibility](COMPATIBILITY
 Hide/show does not quit the application. The settings command still works while
 the overlay is hidden, paused or click-through. Turning off login startup does
 not terminate a running instance.
+
+`lyricglass recover`, also available as Restore access in Behavior, restores a
+clickable panel on the automatic monitor at the top-center anchor. It clears
+position locking, lyrics-only mode, auto-hide and start-hidden preferences, but
+preserves appearance, language, lyric timing, shortcuts and login startup.
+Managed Wayland still controls the actual window position.
 
 ## Playback
 
@@ -89,6 +99,7 @@ lyricglass language en
 lyricglass language es
 lyricglass language zh
 lyricglass move
+lyricglass recover
 lyricglass position 120 180
 lyricglass reset-position
 lyricglass material liquid --refraction 6
@@ -120,6 +131,8 @@ Preferences also has native import/export file dialogs. Imports apply live,
 normalize ranges and preserve the current login-startup choice. Files must be
 valid JSON and at most 128 KiB. Backups can include display connector names and
 shortcut choices from another machine; review these after importing.
+CLI exports use the live application's preferences when available, even before
+the debounced disk write finishes. With no running instance they read the file.
 
 Settings live in `$XDG_CONFIG_HOME/lyricglass/config.json`, normally
 `~/.config/lyricglass/config.json`. Missing fields receive defaults. Invalid JSON

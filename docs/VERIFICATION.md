@@ -7,7 +7,7 @@ GTK 4.22.4, gtk4-layer-shell C library 1.3.0 and Niri 26.04.
 
 - Formatting and strict Clippy with all features.
 - Formatting and strict Clippy without the optional layer-shell feature.
-- 19 unit tests plus one private-D-Bus MPRIS integration test.
+- 22 unit tests plus one private-D-Bus MPRIS integration test.
 - One additional native X11 integration test, explicitly enabled with
   `cargo test --test x11 -- --ignored`.
 - Native X11 test also passes with `--no-default-features`.
@@ -34,6 +34,17 @@ D-Bus session. It verifies:
 - Injected F7 presses hide and show the window.
 - Click-through creates an empty native input region.
 - Settings import/export updates a running instance and preserves startup choice.
+- Immediate exports use live preferences rather than an outdated file.
+- Immediate Quit and SIGTERM flush the latest settings and bounded coordinates.
+- Recovery restores access without resetting appearance, language or startup.
+- Switching language retains the selected preferences tab.
+- Oversized startup configuration files fall back to defaults.
+
+All five generated stock-Niri rule files and all five optional Liquid Glass
+rule files passed their respective compositor validators. The X11 harness waits
+for D-Bus ownership before sending commands after a restart and bounds command
+execution, preventing a status request from accidentally becoming the primary
+test instance.
 
 Screenshots in `screenshots/` are native widget captures with original sample
 lyrics, not browser mockups. They exclude background blur and refraction.
@@ -56,7 +67,8 @@ enabled and running, replacing the temporary launch unit. The installed desktop
 and autostart entries and systemd unit passed their validators; `niri validate`
 also passed. Disabling and reenabling login startup left the same application
 process running. Existing appearance, placement and shortcut settings survived
-the update. The installed app reports English, the native Wayland layer backend,
+the update. English defaults were verified separately from the user's explicit
+language preference. The installed app reports the native Wayland layer backend,
 real Spotify playback and synchronized lyrics. An actual reboot/login cycle has
 not been performed.
 

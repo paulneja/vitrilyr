@@ -141,6 +141,8 @@ test also uses a private bus and never controls your Spotify.
   after moving the executable. On other Wayland desktops, bind the command manually.
 - **Cannot click:** `lyricglass game-mode` toggles click-through off;
   `lyricglass settings` opens preferences separately.
+- **Panel inaccessible:** `lyricglass recover` restores visible, unlocked controls
+  without resetting appearance, language or login startup.
 - **Lyrics drift:** adjust the offset; live and remastered versions may have
   different timings. Retry the lookup from preferences.
 - **No blur:** transparency alone does not create blur. Check compositor rules
