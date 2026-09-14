@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
 
 ### Fixed
 
@@ -18,6 +18,9 @@
 
 ### Added
 
-- Restore access action and `lyricglass recover` command.
+- Vitrilyr name, with migration from existing LyricGlass preferences.
+- One-command builds and a private Linux ELF release workflow.
+- Ubuntu 24.04 release baseline with layer-shell included in the executable.
+- Restore access action and `vitrilyr recover` command.
 - Native regression coverage for immediate export, graceful exit, recovery,
   bounded configuration loading and language changes within settings.

@@ -2,7 +2,7 @@
 
 Backend selection happens at launch: supported Wayland layer-shell first,
 native X11 next, otherwise a regular GTK window. Inspect it with
-`lyricglass status`. No XWayland is needed on a supported Wayland compositor.
+`vitrilyr status`. No XWayland is needed on a supported Wayland compositor.
 
 | Environment | Window behavior | Global shortcuts | Verification |
 | --- | --- | --- | --- |
@@ -18,8 +18,8 @@ identical behavior across window managers, drivers or games.
 
 ## Wayland limits
 
-The layer surface reserves no workspace space. Its namespace is `lyricglass`;
-preferences and full lyrics use `lyricglass-settings`. Normal anchored placement
+The layer surface reserves no workspace space. Its namespace is `vitrilyr`;
+preferences and full lyrics use `vitrilyr-settings`. Normal anchored placement
 uses exclusive zone zero. Free placement uses zone -1 to measure from output
 edges. Dragging and saved coordinates stay within the selected output.
 
@@ -30,8 +30,8 @@ override compositor policy in this mode. Its keyboard focus follows ordinary
 window behavior, unlike the layer overlay.
 
 Only Niri shortcut installation is automated on Wayland. On GNOME, Plasma, Sway
-or Hyprland, bind `lyricglass toggle`, `lyricglass settings` and
-`lyricglass game-mode` in the desktop's shortcut settings. There is no global
+or Hyprland, bind `vitrilyr toggle`, `vitrilyr settings` and
+`vitrilyr game-mode` in the desktop's shortcut settings. There is no global
 shortcuts portal integration yet. Niri bindings use `allow-inhibiting=false`;
 other desktops and exclusive-input games may handle shortcuts differently.
 
@@ -59,7 +59,7 @@ fractional scaling and individual X11 desktops still need manual coverage.
 Stock Niri blur rules are installed with the shortcut configuration. They require
 a Niri version supporting background effects; the installer validates syntax
 before changing the main configuration. On other compositors configure blur
-using their own rules. LyricGlass cannot create true desktop-background blur
+using their own rules. Vitrilyr cannot create true desktop-background blur
 inside a normal transparent GTK window.
 
 The optional [Liquid Glass compositor](../compositor/README.md) is experimental,

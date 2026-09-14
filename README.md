@@ -1,4 +1,4 @@
-# LyricGlass
+# Vitrilyr
 
 A native Spotify lyrics overlay for Linux. Rust and GTK4, with a real Wayland
 layer surface where supported and a native X11 backend. No browser runtime,
@@ -19,12 +19,25 @@ Spotify account tokens or Web API credentials.
 
 ## Install
 
+Download the Linux x86_64 ELF from the private repository's
+[latest release](https://github.com/paulneja/vitrilyr/releases/latest).
+It includes layer-shell support and needs the system GTK runtime, not Rust.
+See the [binary installation notes](packaging/RELEASE.md) for requirements,
+checksums and automatic startup.
+
+To compile from source after installing the dependencies below:
+
+```sh
+./scripts/build.sh
+./target/release/vitrilyr
+```
+
 Requires **Rust 1.92+, GTK 4.12+ and GLib 2.80+**. On Arch Linux:
 
 ```sh
 sudo pacman -S --needed base-devel rust gtk4 gtk4-layer-shell pkgconf dbus
 ./scripts/install.sh
-~/.local/bin/lyricglass
+~/.local/bin/vitrilyr
 ```
 
 The installer builds a release binary, installs an application-menu entry and
@@ -34,7 +47,7 @@ not root. Use `./scripts/install.sh --no-autostart` to opt out.
 On Niri, install global shortcuts once:
 
 ```sh
-~/.local/bin/lyricglass install-shortcuts
+~/.local/bin/vitrilyr install-shortcuts
 ```
 
 [Installation](docs/INSTALLATION.md) covers Debian, Ubuntu, Fedora, optional
@@ -63,16 +76,16 @@ prevents accidental moves. Preferences remain accessible through the command lin
 even when the overlay is hidden or click-through.
 
 ```sh
-lyricglass settings
-lyricglass layout square
-lyricglass style light
-lyricglass language es
-lyricglass move
-lyricglass position 120 180
-lyricglass reset-position
-lyricglass toggle
-lyricglass game-mode
-lyricglass status
+vitrilyr settings
+vitrilyr layout square
+vitrilyr style light
+vitrilyr language es
+vitrilyr move
+vitrilyr position 120 180
+vitrilyr reset-position
+vitrilyr toggle
+vitrilyr game-mode
+vitrilyr status
 ```
 
 See [Configuration](docs/CONFIGURATION.md) for the complete controls, defaults,
@@ -89,12 +102,12 @@ refraction through a separately installed Niri build.
 The preview above includes the actual compositor effect. Widget-only screenshots
 do not capture the background. Stock Niri can provide blur and shadows; other
 desktops depend on their compositor. **The full refraction effect is not available
-on every desktop.** Installing LyricGlass does not replace your compositor or
+on every desktop.** Installing Vitrilyr does not replace your compositor or
 switch your session.
 
 ```sh
-lyricglass material liquid --refraction 6
-lyricglass material frosted
+vitrilyr material liquid --refraction 6
+vitrilyr material frosted
 ```
 
 ## Lyrics and privacy
@@ -103,7 +116,7 @@ Spotify supplies track metadata, position, artwork URLs and playback controls
 through the local [MPRIS interface](https://specifications.freedesktop.org/mpris-spec/latest/).
 Lyrics come from [LRCLIB](https://lrclib.net/docs), not Spotify's private lyric
 service. Their timing or content can differ from Spotify, and some songs have no
-match. No Premium requirement is introduced by LyricGlass.
+match. No Premium requirement is introduced by Vitrilyr.
 
 Synchronization is line-based. Plain lyrics remain selectable and scrollable;
 the app does not invent timestamps or word-by-word karaoke. A positive lyric
@@ -132,22 +145,22 @@ test also uses a private bus and never controls your Spotify.
 
 ## Troubleshooting
 
-- **Nothing visible:** run `lyricglass show`; check idle/paused visibility and
-  `lyricglass status`. Launch inside your graphical session, never with sudo.
+- **Nothing visible:** run `vitrilyr show`; check idle/paused visibility and
+  `vitrilyr status`. Launch inside your graphical session, never with sudo.
 - **No Spotify:** check `busctl --user list` for
   `org.mpris.MediaPlayer2.spotify*`. Native and Flatpak Spotify must expose
   MPRIS on the same session bus. Browser Spotify is not a supported source.
 - **F7 does nothing:** resolve key conflicts. On Niri, rerun the shortcut installer
   after moving the executable. On other Wayland desktops, bind the command manually.
-- **Cannot click:** `lyricglass game-mode` toggles click-through off;
-  `lyricglass settings` opens preferences separately.
-- **Panel inaccessible:** `lyricglass recover` restores visible, unlocked controls
+- **Cannot click:** `vitrilyr game-mode` toggles click-through off;
+  `vitrilyr settings` opens preferences separately.
+- **Panel inaccessible:** `vitrilyr recover` restores visible, unlocked controls
   without resetting appearance, language or login startup.
 - **Lyrics drift:** adjust the offset; live and remastered versions may have
   different timings. Retry the lookup from preferences.
 - **No blur:** transparency alone does not create blur. Check compositor rules
   and the [compatibility notes](docs/COMPATIBILITY.md).
-- **Startup problems:** `journalctl --user -u lyricglass.service -b`.
+- **Startup problems:** `journalctl --user -u vitrilyr.service -b`.
   See the [installation guide](docs/INSTALLATION.md#automatic-startup).
 
 ## License

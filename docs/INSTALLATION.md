@@ -1,5 +1,16 @@
 # Installation
 
+## Prebuilt ELF
+
+The [private Releases page](https://github.com/paulneja/vitrilyr/releases)
+provides `vitrilyr-linux-x86_64`, `SHA256SUMS`, runtime notes and license files.
+Sign in with a GitHub account that has access to the repository. Nothing in the
+build or release workflow changes repository visibility.
+
+See [release installation](../packaging/RELEASE.md). The binary is built on
+Ubuntu 24.04, includes gtk4-layer-shell, and still requires system GTK/GLib.
+It is not an AppImage or a fully static executable.
+
 ## Requirements
 
 - Linux with a graphical session and a user D-Bus session.
@@ -67,8 +78,9 @@ Check GTK/GLib and Rust versions for your Fedora release.
 From the source directory:
 
 ```sh
+./scripts/build.sh
 ./scripts/install.sh
-~/.local/bin/lyricglass
+~/.local/bin/vitrilyr
 ```
 
 The script uses the locked dependency set and replaces the installed executable
@@ -79,7 +91,7 @@ For a manual build without layer-shell:
 
 ```sh
 cargo build --release --locked --no-default-features
-target/release/lyricglass
+target/release/vitrilyr
 ```
 
 This is a source-build compatibility option, not a static universal binary.
@@ -91,10 +103,10 @@ Installed files:
 
 | File | Purpose |
 | --- | --- |
-| `~/.local/bin/lyricglass` | Executable |
-| `$XDG_DATA_HOME/applications/io.github.lyricglass.LyricGlass.desktop` | Application menu |
-| `$XDG_CONFIG_HOME/systemd/user/lyricglass.service` | User service |
-| `$XDG_CONFIG_HOME/autostart/io.github.lyricglass.LyricGlass.desktop` | Login launcher |
+| `~/.local/bin/vitrilyr` | Executable |
+| `$XDG_DATA_HOME/applications/io.github.paulneja.Vitrilyr.desktop` | Application menu |
+| `$XDG_CONFIG_HOME/systemd/user/vitrilyr.service` | User service |
+| `$XDG_CONFIG_HOME/autostart/io.github.paulneja.Vitrilyr.desktop` | Login launcher |
 
 XDG defaults are `~/.local/share` and `~/.config`. Commands in this guide assume
 `~/.local/bin` is on PATH; otherwise use the executable's full path.
@@ -106,15 +118,15 @@ login**, not before login or on the lock screen. It is a user service, never a
 root service, and does not enable user lingering.
 
 ```sh
-lyricglass autostart on
-lyricglass autostart off
-systemctl --user status lyricglass.service
-journalctl --user -u lyricglass.service -b
+vitrilyr autostart on
+vitrilyr autostart off
+systemctl --user status vitrilyr.service
+journalctl --user -u vitrilyr.service -b
 ```
 
 The same setting is available in Preferences under Behavior. Turning it off
 disables future login startup without closing the current overlay. Start hidden
-is a separate preference. Close the running app with `lyricglass quit`.
+is a separate preference. Close the running app with `vitrilyr quit`.
 
 On systemd desktops, the service attaches to `graphical-session.target` and
 restarts after failures. The XDG launcher imports the current display environment
@@ -124,7 +136,7 @@ either the graphical-session target or XDG autostart; minimal window-manager
 sessions that provide neither need their own startup command:
 
 ```sh
-/home/YOUR_USER/.local/bin/lyricglass autostart-run
+/home/YOUR_USER/.local/bin/vitrilyr autostart-run
 ```
 
 Do not add a second direct app launch if your desktop already runs the launcher.
@@ -136,8 +148,8 @@ To start the service immediately from your graphical session:
 
 ```sh
 systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
-lyricglass quit
-systemctl --user start lyricglass.service
+vitrilyr quit
+systemctl --user start vitrilyr.service
 ```
 
 Only import variables actually set in your session; systemctl may warn about
@@ -151,7 +163,7 @@ Run the installer again after updating the source. Preferences and cache are
 retained. Restart the service to use the new binary:
 
 ```sh
-systemctl --user restart lyricglass.service
+systemctl --user restart vitrilyr.service
 ```
 
 If you launched manually, quit and reopen instead. To remove the app:
@@ -161,5 +173,5 @@ If you launched manually, quit and reopen instead. To remove the app:
 ```
 
 Removal preserves preferences, cache and the optional compositor. Remove the
-LyricGlass include from Niri's configuration before deleting its configuration
+Vitrilyr include from Niri's configuration before deleting its configuration
 directory. Keep your existing Niri backup until you have validated the result.

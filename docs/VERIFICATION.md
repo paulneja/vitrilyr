@@ -56,13 +56,13 @@ Actual Spotify discovery, artwork and synchronized LRCLIB lyrics were verified
 in the normal local session. Unsigned Spotify duration and string track IDs are
 covered by a regression test. Starting, pausing and track changes were observed.
 
-Niri reported a real overlay layer with namespace `lyricglass` and keyboard
+Niri reported a real overlay layer with namespace `vitrilyr` and keyboard
 interactivity `None`. CLI hide/show, single-instance delivery, normal/line/square
 layouts, minimum square size and free-position persistence were checked.
 The shortcut installer validates the complete Niri configuration before adding
 the include and preserves an original backup.
 
-The user installer was run end to end. The permanent `lyricglass.service` is
+The user installer was run end to end. The permanent `vitrilyr.service` is
 enabled and running, replacing the temporary launch unit. The installed desktop
 and autostart entries and systemd unit passed their validators; `niri validate`
 also passed. Disabling and reenabling login startup left the same application
@@ -75,7 +75,7 @@ not been performed.
 ## Optional refraction
 
 - The pinned Niri-glass integration and replacement optical shader built in release.
-- `niri-lyricglass` was installed separately; stock Niri was not replaced.
+- `niri-vitrilyr` was installed separately; stock Niri was not replaced.
 - A nested Wayland session rendered the real GTK overlay over an optical grid.
 - Comparing refraction 0/6 changed pixels in an interior bevel strip; a checked
   900 x 300 region outside the panel had exactly zero pixel difference.

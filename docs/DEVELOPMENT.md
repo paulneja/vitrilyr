@@ -39,8 +39,8 @@ cargo test --test x11 -- --ignored
 cargo test --no-default-features --test x11 -- --ignored
 cargo build --release --locked
 bash -n scripts/install.sh scripts/uninstall.sh
-desktop-file-validate data/io.github.lyricglass.LyricGlass.desktop
-systemd-analyze --user verify data/lyricglass.service
+desktop-file-validate data/io.github.paulneja.Vitrilyr.desktop
+systemd-analyze --user verify data/vitrilyr.service
 ```
 
 The ignored X11 test needs Xvfb, D-Bus and a working GTK icon theme. Install a CJK
@@ -61,12 +61,12 @@ checks do not establish that a hosted CI run has passed.
 ## Visual checks
 
 ```sh
-LYRICGLASS_TEST_ARTIFACTS=/tmp/lyricglass-captures cargo test --test x11 -- --ignored
+VITRILYR_TEST_ARTIFACTS=/tmp/vitrilyr-captures cargo test --test x11 -- --ignored
 ```
 
 This renders every style, all three layouts and preferences in three languages.
 Inspect text wrapping, minimum square geometry, disabled controls and input
-regions. For a normal session, `lyricglass demo` uses original sample lines when
+regions. For a normal session, `vitrilyr demo` uses original sample lines when
 no instance is already running. Quit the real instance first; demo never drives
 Spotify. Hidden diagnostic commands `capture /absolute/path.png` and
 `capture-settings /absolute/path.png` snapshot GTK widgets only. They do not
@@ -77,9 +77,27 @@ Keep the stock compositor intact when testing it.
 
 ## Release notes
 
-Use the locked dependency set for releases and build against the oldest runtime
-you intend to support. Test both feature configurations. Before public
-distribution, replace the unpublished local-build HTTP User-Agent in
-`lyrics.rs` with a real project/contact URL. Do not invent a public repository
-address. Keep third-party compositor notices and licenses with its sources and
-any distributed binaries.
+Run `./scripts/release.sh` on an x86_64 Linux host with Docker. It builds on
+Ubuntu 24.04 using the locked Rust dependencies and a pinned gtk4-layer-shell
+revision. The C layer library is linked into the ELF; GTK remains dynamic.
+The native X11 suite exercises that exact release executable before files and
+SHA-256 checksums are exported to `dist/`. `VITRILYR_TEST_BINARY` can point the
+same test at another executable. Do not enable that override for untrusted files.
+
+Push a tag matching the Cargo version, such as `v0.1.0`, to run the release
+workflow. It verifies the repository is private before building and again before
+uploading the ELF and notices to GitHub Releases. It never changes visibility.
+The ordinary CI job separately tests the build without layer-shell.
+
+Keep third-party notices and licenses with sources and distributed binaries.
+The optional compositor is not part of the application ELF release.
+
+## Rename migration
+
+The application ID is `io.github.paulneja.Vitrilyr`; config and cache directories
+are named `vitrilyr`. If the new settings file is absent, the app reads the old
+`lyricglass/config.json` without modifying it. New preferences take precedence.
+The installer disables the old service, copies existing preferences only when
+the new file is absent, removes old menu/login launchers and replaces an exact
+legacy Niri shortcut include after validating the entire configuration.
+Old cache files and the optional compositor executable remain untouched.
