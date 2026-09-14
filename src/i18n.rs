@@ -41,17 +41,19 @@ fn translate(text: &str, language: u8) -> &str {
 
 pub fn refresh(widget: &impl IsA<gtk::Widget>) {
     let widget = widget.upcast_ref::<gtk::Widget>();
+    if ["track-title", "artist", "plain-lyrics", "lyric-content"]
+        .iter()
+        .any(|class| widget.has_css_class(class))
+    {
+        return;
+    }
     if let Some(tooltip) = widget.tooltip_text() {
         let translated = tr(&tooltip);
         if translated != tooltip {
             widget.set_tooltip_text(Some(translated));
         }
     }
-    if let Some(label) = widget.downcast_ref::<gtk::Label>()
-        && !["track-title", "artist", "plain-lyrics"]
-            .iter()
-            .any(|class| label.has_css_class(class))
-    {
+    if let Some(label) = widget.downcast_ref::<gtk::Label>() {
         let text = label.text();
         let translated = tr(&text);
         if translated != text {

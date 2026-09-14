@@ -33,6 +33,7 @@ impl LyricView {
             .content_height(84)
             .hexpand(true)
             .build();
+        widget.add_css_class("lyric-content");
         let state = Rc::new(RefCell::new(Presentation {
             lyrics: None,
             message: tr("Waiting for Spotify").into(),
@@ -71,8 +72,16 @@ impl LyricView {
         state.font_family = config.font_family.clone();
         state.spacing = config.line_spacing;
         state.transition = f64::from(config.transition_ms) / 1000.0;
-        state.secondary = config.secondary_opacity;
+        state.secondary = if config.theme == "contrast" {
+            config.secondary_opacity.max(0.75)
+        } else {
+            config.secondary_opacity
+        };
         state.light = config.theme == "light";
+        if !matches!(state.lyrics, Some(Lyrics::Synced(_))) {
+            state.message = tr(&state.message).into();
+            self.widget.set_tooltip_text(Some(&state.message));
+        }
         self.widget.queue_draw();
     }
     pub fn set(&self, lyrics: Option<Lyrics>, message: &str) {

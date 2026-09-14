@@ -8,6 +8,7 @@ use std::{sync::mpsc, time::Duration};
 use tokio::sync::mpsc as async_mpsc;
 
 pub enum Event {
+    Shutdown,
     Player(PlayerEvent),
     Lyrics(u64, Result<Lyrics, String>),
     Art(u64, Option<Artwork>),
@@ -22,6 +23,7 @@ pub enum Preference {
     Startup(Config),
     Import(std::path::PathBuf),
     Export(std::path::PathBuf, Config),
+    Flush(mpsc::Sender<()>),
 }
 pub struct Load {
     pub generation: u64,
@@ -36,6 +38,12 @@ pub struct Backend {
 }
 
 impl Backend {
+    pub fn flush_preferences(&self) -> anyhow::Result<()> {
+        let (sender, receiver) = mpsc::channel();
+        self.preferences.send(Preference::Flush(sender))?;
+        receiver.recv_timeout(Duration::from_secs(3))?;
+        Ok(())
+    }
     pub fn start() -> anyhow::Result<(Self, mpsc::Receiver<Event>)> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
@@ -50,6 +58,22 @@ impl Backend {
             .name("lyricglass-worker".into())
             .spawn(move || {
                 runtime.block_on(async move {
+                    let signal_events = events.clone();
+                    tokio::spawn(async move {
+                        use tokio::signal::unix::{SignalKind, signal};
+                        match (
+                            signal(SignalKind::terminate()),
+                            signal(SignalKind::interrupt()),
+                        ) {
+                            (Ok(mut term), Ok(mut interrupt)) => {
+                                tokio::select! { _ = term.recv() => {}, _ = interrupt.recv() => {} }
+                                let _ = signal_events.send(Event::Shutdown);
+                            }
+                            (Err(error), _) | (_, Err(error)) => {
+                                tracing::warn!(%error, "Could not register shutdown signals");
+                            }
+                        }
+                    });
                     let player_events = events.clone();
                     tokio::spawn(async move {
                         while !commands.is_closed() {
@@ -83,6 +107,10 @@ impl Backend {
                                 }
                             }
                             let (config, install) = match change {
+                                Preference::Flush(done) => {
+                                    let _ = done.send(());
+                                    continue;
+                                }
                                 Preference::Import(path) => {
                                     match Config::read_from(&path).await {
                                         Ok(config) => {

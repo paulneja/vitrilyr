@@ -178,7 +178,7 @@ pub async fn watch_on(
                 event = owners.next() => { event.context("D-Bus disconnected")?; }
                 command = commands.recv() => {
                     command.context("Command channel closed")?;
-                    emit(PlayerEvent::Error("Spotify no esta disponible".into()));
+                    emit(PlayerEvent::Error("Spotify is not running".into()));
                 }
                 _ = tokio::time::sleep(Duration::from_secs(5)) => {}
             }
@@ -219,7 +219,7 @@ pub async fn watch_on(
                     match tokio::time::timeout(Duration::from_secs(3), control(&player, command)).await {
                         Ok(Ok(())) => {},
                         Ok(Err(error)) => emit(PlayerEvent::Error(format!("Spotify: {error}"))),
-                        Err(_) => emit(PlayerEvent::Error("Spotify no responde".into())),
+                        Err(_) => emit(PlayerEvent::Error("Spotify is not responding".into())),
                     }
                 }
             }

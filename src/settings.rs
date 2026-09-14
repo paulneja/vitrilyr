@@ -456,16 +456,7 @@ pub fn open(ui: &Rc<Ui>) {
                 }
                 .into()
             });
-            let weak = Rc::downgrade(&ui);
-            glib::idle_add_local_once(move || {
-                if let Some(ui) = weak.upgrade() {
-                    let window = ui.settings.borrow_mut().take();
-                    if let Some(window) = window {
-                        window.close();
-                    }
-                    open(&ui);
-                }
-            });
+            reopen(&ui);
         }
     });
     row(&content, tr("Language"), &language);
@@ -581,6 +572,9 @@ pub fn open(ui: &Rc<Ui>) {
     let visibility = gtk::Button::with_label(tr("Show / hide"));
     ui.on_button(&visibility, |ui| ui.toggle());
     row(&content, tr("Overlay"), &visibility);
+    let recover = crate::ui::button("edit-undo-symbolic", tr("Restore access"));
+    ui.on_button(&recover, |ui| ui.recover());
+    row(&content, tr("Restore access"), &recover);
     section(&content, tr("Playback"));
     let media = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     for (icon, title, command) in [
@@ -725,6 +719,15 @@ pub fn open(ui: &Rc<Ui>) {
         }
     });
     content.append(&quit);
+    pages.set_visible_child_name(&ui.settings_page.borrow());
+    let weak = Rc::downgrade(ui);
+    pages.connect_visible_child_name_notify(move |pages| {
+        if let Some(ui) = weak.upgrade()
+            && let Some(name) = pages.visible_child_name()
+        {
+            *ui.settings_page.borrow_mut() = name.to_string();
+        }
+    });
     set_dialog_content(&window, &layout);
     let weak = Rc::downgrade(ui);
     window.connect_close_request(move |_| {
@@ -737,7 +740,10 @@ pub fn open(ui: &Rc<Ui>) {
     window.present();
 }
 
-fn reopen(ui: &Rc<Ui>) {
+pub fn reopen(ui: &Rc<Ui>) {
+    if ui.settings.borrow().is_none() {
+        return;
+    }
     let weak = Rc::downgrade(ui);
     glib::idle_add_local_once(move || {
         if let Some(ui) = weak.upgrade() {

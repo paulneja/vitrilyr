@@ -11,7 +11,12 @@ pub fn run() -> glib::ExitCode {
         .flags(gio::ApplicationFlags::HANDLES_COMMAND_LINE)
         .build();
     let current: Rc<RefCell<Option<Rc<Ui>>>> = Rc::new(RefCell::new(None));
-    let config_action = gio::SimpleAction::new("apply-config", Some(glib::VariantTy::STRING));
+    let config_action = gio::SimpleAction::new_stateful(
+        "apply-config",
+        Some(glib::VariantTy::STRING),
+        &"{}".to_variant(),
+    );
+    config_action.connect_change_state(|_, _| {});
     let target = current.clone();
     config_action.connect_activate(move |_, parameter| {
         if let Some(json) = parameter.and_then(|v| v.str())
@@ -19,14 +24,18 @@ pub fn run() -> glib::ExitCode {
             && let Some(ui) = target.borrow().as_ref()
         {
             ui.change(|c| *c = config);
-            let settings = ui.settings.borrow_mut().take();
-            if let Some(window) = settings {
-                window.close();
-                crate::settings::open(ui);
-            }
+            crate::settings::reopen(ui);
         }
     });
     app.add_action(&config_action);
+    let closing = current.clone();
+    app.connect_shutdown(move |_| {
+        if let Some(ui) = closing.borrow().as_ref()
+            && let Err(error) = ui.backend.flush_preferences()
+        {
+            tracing::warn!(%error, "Could not finish saving preferences before exit");
+        }
+    });
     app.connect_command_line(move |app, cli| {
         let args = match Args::try_parse_from(cli.arguments()) {
             Ok(args) => args,
@@ -55,6 +64,20 @@ pub fn run() -> glib::ExitCode {
             .as_ref()
             .cloned()
             .expect("UI initialized above");
+        let refresh_settings = matches!(
+            &args.command,
+            Some(
+                Command::Language { .. }
+                    | Command::Style { .. }
+                    | Command::Layout { .. }
+                    | Command::Material { .. }
+                    | Command::Position { .. }
+                    | Command::ResetPosition
+                    | Command::GameMode
+                    | Command::Move
+                    | Command::Recover
+            )
+        );
         match args.command {
             Some(Command::Toggle) if starting => ui.set_visible(true),
             Some(Command::Toggle) => ui.toggle(),
@@ -64,11 +87,6 @@ pub fn run() -> glib::ExitCode {
             Some(Command::Settings) => crate::settings::open(&ui),
             Some(Command::Language { language }) => {
                 ui.change(|c| c.language = language);
-                let settings = ui.settings.borrow_mut().take();
-                if let Some(window) = settings {
-                    window.close();
-                    crate::settings::open(&ui);
-                }
             }
             Some(Command::Style { style }) => ui.change(|c| c.theme = style),
             Some(Command::GameMode) => ui.game_mode(),
@@ -82,6 +100,7 @@ pub fn run() -> glib::ExitCode {
                 c.y = y;
             }),
             Some(Command::Move) => ui.place(),
+            Some(Command::Recover) => ui.recover(),
             Some(Command::Material { mode, refraction }) => ui.change(|c| {
                 c.liquid = matches!(mode, crate::MaterialMode::Liquid);
                 if let Some(value) = refraction {
@@ -121,6 +140,9 @@ pub fn run() -> glib::ExitCode {
                 cli.printerr_literal(tr("Invalid argument\n"));
                 return glib::ExitCode::FAILURE;
             }
+        }
+        if refresh_settings {
+            crate::settings::reopen(&ui);
         }
         glib::ExitCode::SUCCESS
     });

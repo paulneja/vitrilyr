@@ -144,7 +144,7 @@ impl Provider {
     async fn fetch(&self, track: &Track) -> Result<Option<Record>> {
         let mut next = self.next_request.lock().await;
         if *next > Instant::now() + Duration::from_secs(12) {
-            bail!("LRCLIB esta limitando las consultas. Reintenta mas tarde.");
+            bail!("LRCLIB is limiting requests. Try again later.");
         }
         tokio::time::sleep_until(*next).await;
         *next = Instant::now() + Duration::from_millis(350);
@@ -174,7 +174,7 @@ impl Provider {
                 .unwrap_or(60)
                 .min(86400);
             *next = Instant::now() + Duration::from_secs(seconds);
-            bail!("LRCLIB: espera {seconds} segundos antes de reintentar");
+            bail!("LRCLIB: wait {seconds} seconds before retrying");
         }
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(None);

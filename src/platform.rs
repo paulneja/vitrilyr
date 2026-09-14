@@ -26,7 +26,11 @@ pub struct X11 {
 impl Platform {
     pub fn detect() -> Self {
         #[cfg(feature = "wayland")]
-        if gtk4_layer_shell::is_supported() {
+        if gdk::Display::default().is_some_and(|display| {
+            gtk::glib::Type::from_name("GdkWaylandDisplay")
+                .is_some_and(|wayland| display.type_().is_a(wayland))
+        }) && gtk4_layer_shell::is_supported()
+        {
             return Self::LayerShell;
         }
         if gdk::Display::default().is_some_and(|d| d.is::<gdk_x11::X11Display>()) {
@@ -226,12 +230,6 @@ impl X11 {
             self.atom(b"_NET_WM_WINDOW_TYPE")?,
             xproto::AtomEnum::ATOM,
             &[self.atom(b"_NET_WM_WINDOW_TYPE_UTILITY")?],
-        )?;
-        self.connection.send_event(
-            false,
-            self.root,
-            xproto::EventMask::SUBSTRUCTURE_REDIRECT | xproto::EventMask::SUBSTRUCTURE_NOTIFY,
-            xproto::ClientMessageEvent::new(32, xid, state, [1, above, skip, 1, 0]),
         )?;
         self.connection
             .configure_window(xid, &ConfigureWindowAux::new().x(geometry.0).y(geometry.1))?;

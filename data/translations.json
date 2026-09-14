@@ -1,4 +1,16 @@
 {
+  "Spotify is not responding": [
+    "Spotify no responde",
+    "Spotify 无响应"
+  ],
+  "LRCLIB is limiting requests. Try again later.": [
+    "LRCLIB está limitando las consultas. Reintenta más tarde.",
+    "LRCLIB 正在限制请求，请稍后重试。"
+  ],
+  "Restore access": [
+    "Recuperar acceso",
+    "恢复访问"
+  ],
   "Settings": [
     "Ajustes",
     "设置"

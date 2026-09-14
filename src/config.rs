@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, process::Command};
+use std::{io::Read, path::PathBuf, process::Command};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
@@ -123,6 +123,20 @@ pub fn dir() -> PathBuf {
 }
 
 impl Config {
+    pub fn recover_overlay(&mut self) {
+        self.click_through = false;
+        self.lock_position = false;
+        self.lyrics_only = false;
+        self.hide_idle = false;
+        self.hide_paused = false;
+        self.start_hidden = false;
+        self.free_position = false;
+        self.bottom = false;
+        self.monitor.clear();
+        self.margin = 16;
+        self.x = 0;
+        self.y = 0;
+    }
     pub fn decode(bytes: &[u8]) -> Result<Self> {
         anyhow::ensure!(bytes.len() <= 128 * 1024, "Settings file exceeds 128 KiB");
         let mut config: Self = serde_json::from_slice(bytes).context("Invalid settings JSON")?;
@@ -143,12 +157,16 @@ impl Config {
         self.y = self.y.clamp(0, monitor.1.saturating_sub(panel.1).max(0));
     }
     pub fn load() -> Self {
-        match std::fs::read(dir().join("config.json")) {
-            Ok(bytes) => match serde_json::from_slice::<Self>(&bytes) {
-                Ok(mut config) => {
-                    config.normalize();
-                    config
-                }
+        let bytes = (|| -> std::io::Result<Vec<u8>> {
+            let mut bytes = Vec::new();
+            std::fs::File::open(dir().join("config.json"))?
+                .take(128 * 1024 + 1)
+                .read_to_end(&mut bytes)?;
+            Ok(bytes)
+        })();
+        match bytes {
+            Ok(bytes) => match Self::decode(&bytes) {
+                Ok(config) => config,
                 Err(error) => {
                     tracing::warn!(%error, "Ignoring malformed settings");
                     Self::default()
@@ -231,11 +249,9 @@ impl Config {
         .await
     }
     pub fn liquid_effects(&self) -> String {
-        let radius = if self.liquid {
-            self.liquid_radius
-        } else {
-            self.corner_radius
-        };
+        let radius = self.material_radius();
+        let blur = self.theme == "glass";
+        let shadow = if self.theme == "minimal" { "off" } else { "on" };
         let strength = if self.liquid && self.theme == "glass" {
             self.refraction
         } else {
@@ -247,7 +263,7 @@ layer-rule {{
     match namespace="^lyricglass$"
     geometry-corner-radius {radius}
     background-effect {{
-        blur true
+        blur {blur}
         xray false
         noise 0
         saturation 1
@@ -265,7 +281,7 @@ layer-rule {{
         }}
     }}
     shadow {{
-        on
+        {shadow}
         softness 24
         spread 0
         offset x=0 y=6
@@ -273,25 +289,34 @@ layer-rule {{
     }}
 }}
 "##,
-            reflection = self.reflections
+            reflection = if self.liquid && blur {
+                self.reflections
+            } else {
+                0.0
+            }
         )
     }
     pub fn surface_effects(&self) -> String {
-        let radius = if self.liquid {
-            self.liquid_radius
-        } else {
-            self.corner_radius
-        };
+        let radius = self.material_radius();
+        let blur = self.theme == "glass";
+        let shadow = if self.theme == "minimal" { "off" } else { "on" };
         format!(
             r##"// Stock Niri-compatible geometry, updated by LyricGlass.
 layer-rule {{
     match namespace="^lyricglass$"
     geometry-corner-radius {radius}
-    background-effect {{ blur true; xray false; }}
-    shadow {{ on; softness 24; spread 0; offset x=0 y=6; color "#00000045"; }}
+    background-effect {{ blur {blur}; xray false; }}
+    shadow {{ {shadow}; softness 24; spread 0; offset x=0 y=6; color "#00000045"; }}
 }}
 "##
         )
+    }
+    pub fn material_radius(&self) -> i32 {
+        match self.theme.as_str() {
+            "minimal" => 0,
+            "glass" if self.liquid => self.liquid_radius,
+            _ => self.corner_radius,
+        }
     }
 }
 
@@ -481,6 +506,57 @@ pub fn install_shortcuts(shortcuts: &Shortcuts) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn compositor_effects_follow_the_selected_style() {
+        let mut config = Config {
+            liquid_radius: 48,
+            corner_radius: 10,
+            ..Default::default()
+        };
+        assert_eq!(config.material_radius(), 48);
+        assert!(config.surface_effects().contains("blur true"));
+        for theme in ["dark", "light", "contrast", "minimal"] {
+            config.theme = theme.into();
+            assert_eq!(
+                config.material_radius(),
+                if theme == "minimal" { 0 } else { 10 }
+            );
+            assert!(config.surface_effects().contains("blur false"));
+            assert!(
+                config
+                    .liquid_effects()
+                    .contains("refraction-strength 0.000")
+            );
+            assert!(config.liquid_effects().contains("edge-lighting 0.000"));
+        }
+        assert!(config.surface_effects().contains("shadow { off;"));
+    }
+    #[test]
+    fn recovery_keeps_appearance_language_and_startup_choice() {
+        let mut config = Config {
+            theme: "light".into(),
+            language: "zh".into(),
+            autostart: false,
+            click_through: true,
+            lock_position: true,
+            lyrics_only: true,
+            hide_idle: true,
+            hide_paused: true,
+            start_hidden: true,
+            monitor: "missing-output".into(),
+            free_position: true,
+            ..Default::default()
+        };
+        config.recover_overlay();
+        assert_eq!(config.theme, "light");
+        assert_eq!(config.language, "zh");
+        assert!(!config.autostart);
+        assert!(config.monitor.is_empty());
+        assert!(!config.free_position && !config.click_through && !config.lock_position);
+        assert!(
+            !config.hide_idle && !config.hide_paused && !config.lyrics_only && !config.start_hidden
+        );
+    }
     #[tokio::test]
     async fn settings_backups_are_bounded_and_normalized() {
         let directory = tempfile::tempdir().unwrap();

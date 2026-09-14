@@ -56,6 +56,8 @@ pub enum Command {
     },
     /// Enable free placement and dragging.
     Move,
+    /// Restore a visible, clickable overlay without resetting its appearance.
+    Recover,
     ResetPosition,
     PlayPause,
     Next,
@@ -130,7 +132,7 @@ fn main() -> gtk::glib::ExitCode {
         let result = (|| -> anyhow::Result<()> {
             let enabled = state == "on";
             lyricglass::startup::set_enabled(enabled)?;
-            let mut config = lyricglass::config::Config::load();
+            let mut config = lyricglass::startup::current_config()?;
             config.autostart = enabled;
             tokio::runtime::Runtime::new()?.block_on(config.save())?;
             lyricglass::startup::notify_config(&config)?;
@@ -144,14 +146,14 @@ fn main() -> gtk::glib::ExitCode {
     if let Some(Command::ExportConfig { path }) = &args.command {
         return cli_result((|| {
             tokio::runtime::Runtime::new()?
-                .block_on(lyricglass::config::Config::load().export(path))
+                .block_on(lyricglass::startup::current_config()?.export(path))
         })());
     }
     if let Some(Command::ImportConfig { path }) = &args.command {
         return cli_result((|| -> anyhow::Result<()> {
             let runtime = tokio::runtime::Runtime::new()?;
             let mut config = runtime.block_on(lyricglass::config::Config::read_from(path))?;
-            config.autostart = lyricglass::config::Config::load().autostart;
+            config.autostart = lyricglass::startup::current_config()?.autostart;
             runtime.block_on(config.save())?;
             lyricglass::startup::notify_config(&config)?;
             Ok(())

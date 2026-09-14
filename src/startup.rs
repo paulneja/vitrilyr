@@ -135,6 +135,23 @@ pub fn notify_config(config: &crate::config::Config) -> Result<()> {
     Ok(())
 }
 
+pub fn current_config() -> Result<crate::config::Config> {
+    if std::env::var_os("DBUS_SESSION_BUS_ADDRESS").is_some() {
+        let app = gio::Application::new(
+            Some("io.github.lyricglass.LyricGlass"),
+            gio::ApplicationFlags::empty(),
+        );
+        app.register(None::<&gio::Cancellable>)?;
+        if app.is_remote()
+            && let Some(state) = app.action_state("apply-config")
+            && let Some(json) = state.str()
+        {
+            return crate::config::Config::decode(json.as_bytes());
+        }
+    }
+    Ok(crate::config::Config::load())
+}
+
 fn systemd_available() -> bool {
     Command::new("systemctl")
         .args(["--user", "show-environment"])

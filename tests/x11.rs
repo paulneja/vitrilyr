@@ -1,5 +1,5 @@
 use std::{
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Read},
     path::Path,
     process::{Child, Command, Stdio},
     thread,
@@ -42,13 +42,65 @@ impl Session {
         command
     }
     fn cli(&self, args: &[&str]) -> String {
-        let output = self.command().args(args).output().unwrap();
-        assert!(
-            output.status.success(),
-            "{args:?}: {}",
-            String::from_utf8_lossy(&output.stderr)
+        let mut child = Process(
+            self.command()
+                .args(args)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap(),
         );
-        String::from_utf8(output.stdout).unwrap()
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let status = loop {
+            if let Some(status) = child.0.try_wait().unwrap() {
+                break status;
+            }
+            assert!(Instant::now() < deadline, "Command timed out: {args:?}");
+            thread::sleep(Duration::from_millis(10));
+        };
+        let mut stdout = String::new();
+        let mut stderr = String::new();
+        child
+            .0
+            .stdout
+            .take()
+            .unwrap()
+            .read_to_string(&mut stdout)
+            .unwrap();
+        child
+            .0
+            .stderr
+            .take()
+            .unwrap()
+            .read_to_string(&mut stderr)
+            .unwrap();
+        assert!(status.success(), "{args:?}: {stderr}");
+        stdout
+    }
+    fn wait_owner(&self) {
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            let connection = zbus::connection::Builder::address(self.bus.as_str())
+                .unwrap()
+                .build()
+                .await
+                .unwrap();
+            let bus = zbus::fdo::DBusProxy::new(&connection).await.unwrap();
+            let deadline = Instant::now() + Duration::from_secs(8);
+            loop {
+                if bus
+                    .name_has_owner("io.github.lyricglass.LyricGlass".try_into().unwrap())
+                    .await
+                    .unwrap()
+                {
+                    break;
+                }
+                assert!(
+                    Instant::now() < deadline,
+                    "Application did not register on D-Bus"
+                );
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        });
     }
     fn status(&self) -> serde_json::Value {
         serde_json::from_str(&self.cli(&["status"])).unwrap()
@@ -154,8 +206,15 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
             .unwrap(),
     );
     thread::sleep(Duration::from_millis(600));
+    session.wait_owner();
     session
         .wait(|s| s["backend"] == "X11" && s["visible"] == true && s["geometry"]["width"] == 580);
+    let immediate = session.config.path().join("immediate.json");
+    session.cli(&["style", "light"]);
+    session.cli(&["export-config", immediate.to_str().unwrap()]);
+    let exported: lyricglass::config::Config =
+        serde_json::from_slice(&std::fs::read(&immediate).unwrap()).unwrap();
+    assert_eq!(exported.theme, "light", "Export must use live preferences");
     let artifacts = std::env::var_os("LYRICGLASS_TEST_ARTIFACTS")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| session.config.path().join("captures"));
@@ -164,6 +223,19 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
         session.cli(&["style", style]);
         session.wait(|s| s["theme"] == style);
         session.capture(&artifacts, &format!("x11-{style}.png"), false);
+        session.cli(&["export-config", immediate.to_str().unwrap()]);
+        let appearance: lyricglass::config::Config =
+            serde_json::from_slice(&std::fs::read(&immediate).unwrap()).unwrap();
+        std::fs::write(
+            artifacts.join(format!("niri-{style}.kdl")),
+            appearance.surface_effects(),
+        )
+        .unwrap();
+        std::fs::write(
+            artifacts.join(format!("liquid-{style}.kdl")),
+            appearance.liquid_effects(),
+        )
+        .unwrap();
     }
     session.cli(&["style", "glass"]);
     for layout in ["square", "line", "normal"] {
@@ -233,6 +305,15 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
         connection.flush().unwrap();
         thread::sleep(Duration::from_millis(100));
     };
+    pointer(xproto::MOTION_NOTIFY_EVENT, 0, 250, 76);
+    pointer(xproto::BUTTON_PRESS_EVENT, 1, 250, 76);
+    pointer(xproto::BUTTON_RELEASE_EVENT, 1, 250, 76);
+    session.wait(|s| s["settings_page"] == "usage");
+    session.capture(&artifacts, "settings-behavior-en.png", true);
+    session.cli(&["language", "zh"]);
+    session.wait(|s| s["language"] == "zh" && s["settings_page"] == "usage");
+    session.capture(&artifacts, "settings-behavior-zh.png", true);
+    session.cli(&["language", "en"]);
     let grip_x = geometry.x + geometry.width as i16 - 34;
     let grip_y = geometry.y + 44;
     pointer(xproto::MOTION_NOTIFY_EVENT, 0, grip_x, grip_y);
@@ -311,6 +392,76 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
         serde_json::from_slice(&std::fs::read(config_dir.join("config.json")).unwrap()).unwrap();
     assert!(!saved.autostart, "Import must not enable login startup");
     assert_eq!((saved.x, saved.y), (270, 300));
+    let mut inaccessible = saved;
+    inaccessible.click_through = true;
+    inaccessible.lock_position = true;
+    inaccessible.lyrics_only = true;
+    inaccessible.hide_idle = true;
+    inaccessible.hide_paused = true;
+    inaccessible.start_hidden = true;
+    std::fs::write(&backup, serde_json::to_vec(&inaccessible).unwrap()).unwrap();
+    session.cli(&["import-config", backup.to_str().unwrap()]);
+    session.wait(|s| s["click_through"] == true);
+    session.cli(&["hide"]);
+    session.cli(&["recover"]);
+    session.wait(|s| s["visible"] == true && s["click_through"] == false);
+    session.cli(&["export-config", immediate.to_str().unwrap()]);
+    let recovered: lyricglass::config::Config =
+        serde_json::from_slice(&std::fs::read(&immediate).unwrap()).unwrap();
+    assert_eq!(recovered.theme, "light");
+    assert_eq!(recovered.language, "zh");
+    assert!(!recovered.lock_position && !recovered.lyrics_only && !recovered.hide_paused);
+    session.cli(&["position", "99999", "99999"]);
+    let bounded = session.status();
+    session.cli(&["style", "dark"]);
     session.cli(&["quit"]);
     assert!(app.0.wait().unwrap().success());
+    let final_config: lyricglass::config::Config =
+        serde_json::from_slice(&std::fs::read(config_dir.join("config.json")).unwrap()).unwrap();
+    assert_eq!(final_config.theme, "dark", "Quit must flush pending writes");
+    assert_eq!(
+        i64::from(final_config.x),
+        bounded["geometry"]["x"].as_i64().unwrap()
+    );
+    assert_eq!(
+        i64::from(final_config.y),
+        bounded["geometry"]["y"].as_i64().unwrap()
+    );
+    assert!(final_config.x < 1280 && final_config.y < 800);
+    let mut restarted = Process(
+        session
+            .command()
+            .arg("demo")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap(),
+    );
+    session.wait_owner();
+    session.wait(|s| s["theme"] == "dark" && s["demo"] == true);
+    session.cli(&["style", "contrast"]);
+    assert!(
+        Command::new("kill")
+            .args(["-TERM", &restarted.0.id().to_string()])
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(restarted.0.wait().unwrap().success());
+    let terminated: lyricglass::config::Config =
+        serde_json::from_slice(&std::fs::read(config_dir.join("config.json")).unwrap()).unwrap();
+    assert_eq!(
+        terminated.theme, "contrast",
+        "Service stop must flush pending writes"
+    );
+    let mut oversized = vec![b' '; 128 * 1024];
+    oversized.extend_from_slice(br#"{"theme":"light"}"#);
+    std::fs::write(config_dir.join("config.json"), oversized).unwrap();
+    session.cli(&["export-config", immediate.to_str().unwrap()]);
+    let fallback: lyricglass::config::Config =
+        serde_json::from_slice(&std::fs::read(&immediate).unwrap()).unwrap();
+    assert_eq!(
+        fallback.theme, "glass",
+        "Startup must bound config reads too"
+    );
 }

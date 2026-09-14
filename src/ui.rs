@@ -24,6 +24,7 @@ pub struct Ui {
     pub config: RefCell<Config>,
     pub backend: Backend,
     pub settings: RefCell<Option<gtk::Window>>,
+    pub settings_page: RefCell<String>,
     pub notice: gtk::Label,
     snapshot: RefCell<Option<Snapshot>>,
     lyrics: RefCell<Option<Lyrics>>,
@@ -160,6 +161,7 @@ impl Ui {
             backend,
             config: RefCell::new(config),
             settings: RefCell::new(None),
+            settings_page: RefCell::new("appearance".into()),
             notice,
             snapshot: RefCell::new(None),
             lyrics: RefCell::new(None),
@@ -224,10 +226,7 @@ impl Ui {
             if let Some(ui) = weak.upgrade() {
                 ui.dragging.set(false);
                 ui.move_handle.set_cursor_from_name(Some("grab"));
-                let _ = ui
-                    .backend
-                    .preferences
-                    .send(Preference::Save(ui.config.borrow().clone()));
+                ui.save_preferences();
             }
         });
         ui.move_handle.add_controller(drag);
@@ -287,10 +286,7 @@ impl Ui {
             glib::ControlFlow::Continue
         });
         ui.configure();
-        let _ = ui
-            .backend
-            .preferences
-            .send(Preference::Save(ui.config.borrow().clone()));
+        ui.save_preferences();
         if demo {
             ui.load_demo();
         }
@@ -312,13 +308,25 @@ impl Ui {
         let _ = self.backend.media.send(command);
     }
     pub fn change(&self, update: impl FnOnce(&mut Config)) {
-        let config = {
+        {
             let mut config = self.config.borrow_mut();
             update(&mut config);
             config.normalize();
-            config.clone()
-        };
+        }
         self.configure();
+        self.save_preferences();
+    }
+    fn save_preferences(&self) {
+        let config = self.config.borrow().clone();
+        if let Some(action) = self
+            .window
+            .application()
+            .and_then(|app| app.lookup_action("apply-config"))
+            .and_then(|action| action.downcast::<gtk::gio::SimpleAction>().ok())
+            && let Ok(json) = serde_json::to_string(&config)
+        {
+            action.set_state(&json.to_variant());
+        }
         let _ = self.backend.preferences.send(Preference::Save(config));
     }
     pub fn toggle(&self) {
@@ -336,7 +344,12 @@ impl Ui {
             c.lock_position = false;
             c.free_position = true;
             c.click_through = false;
+            c.lyrics_only = false;
         });
+        self.set_visible(true);
+    }
+    pub fn recover(&self) {
+        self.change(Config::recover_overlay);
         self.set_visible(true);
     }
     fn monitor_size(&self) -> (i32, i32) {
@@ -406,6 +419,18 @@ impl Ui {
     }
     pub fn configure(&self) {
         crate::i18n::set_language(&self.config.borrow().language);
+        if let Some(snapshot) = self.snapshot.borrow().as_ref() {
+            let playing = snapshot.playback == Playback::Playing;
+            self.artist.set_text(&format!(
+                "{}{}",
+                snapshot.track.artist(),
+                if playing { "" } else { tr("  ·  Paused") }
+            ));
+            self.play
+                .set_tooltip_text(Some(if playing { tr("Pause") } else { tr("Play") }));
+        } else {
+            self.artist.set_text(tr("Spotify is not running"));
+        }
         if let Err(error) = self.platform.shortcuts(&self.config.borrow().shortcuts) {
             self.notice.set_text(&error.to_string());
         }
@@ -538,7 +563,7 @@ impl Ui {
         self.css.load_from_string(&format!(
             "{}\n.glass {{ background: alpha(#18181b, {}); border-radius: {}px; }}\n.liquid .glass {{ background: transparent; border-color: transparent; border-radius: {}px; }}\n.glass scale highlight, .preferences scale highlight, .preferences switch:checked {{ background: {}; }}",
             include_str!("../data/style.css"),
-            config.opacity,config.corner_radius,config.liquid_radius,accent
+            config.opacity,config.material_radius(),config.liquid_radius,accent
         ));
         if config.animations {
             self.window.remove_css_class("no-motion");
@@ -563,6 +588,11 @@ impl Ui {
     }
     fn event(&self, event: Event) {
         match event {
+            Event::Shutdown => {
+                if let Some(app) = self.window.application() {
+                    app.quit();
+                }
+            }
             Event::Shortcuts(keys) => self.change(|c| c.shortcuts = keys),
             Event::Startup(enabled) => self.change(|c| c.autostart = enabled),
             Event::Imported(mut config) => {
@@ -589,8 +619,8 @@ impl Ui {
                 self.visibility();
             }
             Event::Player(PlayerEvent::Error(error)) | Event::Notice(error) => {
-                self.notice.set_text(&error);
-                self.source.set_tooltip_text(Some(&error));
+                self.notice.set_text(tr(&error));
+                self.source.set_tooltip_text(Some(tr(&error)));
                 tracing::warn!(message=%error);
             }
             Event::Lyrics(generation, result) if generation == self.generation.get() => {
@@ -614,8 +644,8 @@ impl Ui {
                     Err(error) => {
                         self.source.set_text(tr("Lyrics unavailable"));
                         self.view.set(None, tr("Could not load lyrics"));
-                        self.notice.set_text(&error);
-                        self.source.set_tooltip_text(Some(&error));
+                        self.notice.set_text(tr(&error));
+                        self.source.set_tooltip_text(Some(tr(&error)));
                     }
                 }
             }
@@ -719,10 +749,8 @@ impl Ui {
                 config.clamp_position(bounds, (self.window.width(), self.window.height()));
                 if previous != (config.x, config.y) {
                     self.platform.position(&self.window, &config);
-                    let _ = self
-                        .backend
-                        .preferences
-                        .send(Preference::Save(config.clone()));
+                    drop(config);
+                    self.save_preferences();
                 }
             }
         }
@@ -769,6 +797,7 @@ impl Ui {
             "backend":self.platform.name(),
             "spotify": snapshot.is_some() && !self.demo,"demo":self.demo,"title":snapshot.as_ref().map(|s| &s.track.title),
             "language":self.config.borrow().language,"theme":self.config.borrow().theme,
+            "settings_page":self.settings.borrow().as_ref().map(|_|self.settings_page.borrow().clone()),
             "playback":snapshot.as_ref().map(|s| s.playback),"position":snapshot.as_ref().map(|s| s.position_at(Instant::now()).as_secs_f64()),
             "duration":snapshot.as_ref().map(|s|s.track.duration().as_secs_f64()),
             "can_seek":snapshot.as_ref().is_some_and(|s|s.can_seek),

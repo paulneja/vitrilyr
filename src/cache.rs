@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
+use tokio::io::AsyncReadExt;
 
 pub fn key(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
@@ -13,10 +14,16 @@ pub fn root() -> PathBuf {
 }
 
 pub async fn read(path: &Path, max: u64) -> Option<Vec<u8>> {
-    if tokio::fs::metadata(path).await.ok()?.len() > max {
+    let file = tokio::fs::File::open(path).await.ok()?;
+    if file.metadata().await.ok()?.len() > max {
         return None;
     }
-    tokio::fs::read(path).await.ok()
+    let mut bytes = Vec::new();
+    file.take(max.saturating_add(1))
+        .read_to_end(&mut bytes)
+        .await
+        .ok()?;
+    (bytes.len() as u64 <= max).then_some(bytes)
 }
 
 pub async fn write(path: &Path, data: &[u8]) -> Result<()> {
@@ -31,6 +38,13 @@ pub async fn write(path: &Path, data: &[u8]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn read_limit_also_applies_to_files_without_a_reported_size() {
+        let path = Path::new("/proc/self/status");
+        assert_eq!(std::fs::metadata(path).unwrap().len(), 0);
+        assert!(read(path, 8).await.is_none());
+        assert!(read(path, 128 * 1024).await.is_some());
+    }
     #[tokio::test]
     async fn cache_creates_directories_and_bounds_reads() {
         let dir = tempfile::tempdir().unwrap();
