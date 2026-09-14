@@ -1,0 +1,28 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check private repository and version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" = true
+          version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n1)
+          test "$GITHUB_REF_NAME" = "v$version"
+      - name: Build and test ELF
+        run: ./scripts/release.sh
+      - name: Publish private release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" = true
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag \
+            --title "Vitrilyr $GITHUB_REF_NAME" --notes-file packaging/RELEASE.md

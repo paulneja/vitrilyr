@@ -1,0 +1,7 @@
+.git
+target
+dist
+.codex
+.agents
+docs/*.png
+docs/screenshots
