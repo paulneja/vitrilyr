@@ -1,13 +1,13 @@
 # Verification
 
-Last local verification: 2026-09-13. Arch Linux x86_64, Rust 1.95.0,
+Last local verification: 2026-09-14. Arch Linux x86_64, Rust 1.95.0,
 GTK 4.22.4, gtk4-layer-shell C library 1.3.0 and Niri 26.04.
 
 ## Automated coverage
 
 - Formatting and strict Clippy with all features.
 - Formatting and strict Clippy without the optional layer-shell feature.
-- 22 unit tests plus one private-D-Bus MPRIS integration test.
+- 23 unit tests plus one private-D-Bus MPRIS integration test.
 - One additional native X11 integration test, explicitly enabled with
   `cargo test --test x11 -- --ignored`.
 - Native X11 test also passes with `--no-default-features`.
@@ -51,6 +51,20 @@ lyrics, not browser mockups. They exclude background blur and refraction.
 The test uses temporary settings and cannot enable the real login service.
 
 ## Real session checks
+
+The Ubuntu 24.04 release ELF was also installed on Arch and confirmed to use
+the native Wayland layer backend. Its embedded layer-shell hooks resolve without
+the separate C shared library. The service is enabled and active with no restarts;
+the legacy service is disabled and inactive. The migrated settings file matches
+the old file byte for byte. The desktop entries and migrated Niri configuration
+passed validation. A native widget capture confirmed artwork and controls render.
+The currently playing remix had no LRCLIB match, which was reported as missing.
+One Vulkan swapchain-out-of-date message occurred during initial sizing; the app
+continued running and the subsequent capture succeeded.
+
+The ELF was also tested on Ubuntu 24.04 inside the release builder using the
+complete private X11 suite. It is approximately 9.3 MiB and dynamically links
+GTK/GLib; it is not a fully static Linux executable.
 
 Actual Spotify discovery, artwork and synchronized LRCLIB lyrics were verified
 in the normal local session. Unsigned Spotify duration and string track IDs are
@@ -97,4 +111,5 @@ manual-test gaps.
 The optional compositor was not tested as the primary DRM session, in games or
 on multiple monitors. Full refraction requires that separate session. Live
 Spotify was verified in the normal session, not inside the isolated optical
-preview. Hosted CI has not been run locally.
+preview. Hosted CI and release results are available in the repository's Actions
+tab; the local checks above are independent of those hosted runs.
