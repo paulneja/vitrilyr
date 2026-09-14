@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=LyricGlass
-Comment=Spotify lyrics on your Wayland desktop
+Comment=Spotify lyrics on your Linux desktop
+Comment[es]=Letras de Spotify en tu escritorio Linux
+Comment[zh_CN]=Linux 桌面的 Spotify 歌词
 Exec=lyricglass
 Icon=audio-x-generic
 Terminal=false
@@ -11,8 +13,12 @@ Actions=Settings;Toggle;
 
 [Desktop Action Settings]
 Name=Settings
+Name[es]=Ajustes
+Name[zh_CN]=设置
 Exec=lyricglass settings
 
 [Desktop Action Toggle]
 Name=Show / Hide
+Name[es]=Mostrar / ocultar
+Name[zh_CN]=显示 / 隐藏
 Exec=lyricglass toggle

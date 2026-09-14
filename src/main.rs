@@ -83,6 +83,8 @@ pub enum Command {
     InstallShortcuts,
     /// Prepare the optional Niri Liquid Glass session and preview.
     PrepareLiquid,
+    /// Install an application-menu entry for this executable.
+    InstallDesktop,
     /// Choose the interface language (English is the default).
     Language {
         #[arg(value_parser = ["en", "es", "zh"])]
@@ -121,6 +123,9 @@ fn main() -> gtk::glib::ExitCode {
         )
         .init();
     let args = Args::parse();
+    if matches!(args.command, Some(Command::InstallDesktop)) {
+        return cli_result(lyricglass::startup::install_desktop());
+    }
     if let Some(Command::Autostart { state }) = &args.command {
         let result = (|| -> anyhow::Result<()> {
             let enabled = state == "on";

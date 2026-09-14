@@ -68,10 +68,24 @@ pub fn set_enabled(enabled: bool) -> Result<()> {
         if desktop.exists() {
             std::fs::remove_file(desktop)?;
         }
-        if systemd_available() {
+        if service.exists() && systemd_available() {
             run_systemctl(&["disable", "lyricglass.service"])?;
         }
     }
+    Ok(())
+}
+
+pub fn install_desktop() -> Result<()> {
+    let base = directories::BaseDirs::new().context("No home directory")?;
+    let directory = base.data_dir().join("applications");
+    std::fs::create_dir_all(&directory)?;
+    let executable = desktop_exec(&std::env::current_exe()?)?;
+    let entry = include_str!("../data/io.github.lyricglass.LyricGlass.desktop")
+        .replace("Exec=lyricglass", &format!("Exec={executable}"));
+    std::fs::write(
+        directory.join("io.github.lyricglass.LyricGlass.desktop"),
+        entry,
+    )?;
     Ok(())
 }
 
@@ -91,8 +105,10 @@ pub fn run() -> Result<()> {
         .filter(|v| std::env::var_os(v).is_some())
         .collect();
         let mut args = vec!["import-environment"];
-        args.extend(variables);
-        if run_systemctl(&args).is_ok() && run_systemctl(&["start", "lyricglass.service"]).is_ok() {
+        args.extend(&variables);
+        if (variables.is_empty() || run_systemctl(&args).is_ok())
+            && run_systemctl(&["start", "lyricglass.service"]).is_ok()
+        {
             return Ok(());
         }
     }
