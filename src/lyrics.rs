@@ -71,9 +71,9 @@ impl Provider {
         Ok(Self {
             client: reqwest::Client::builder()
                 .user_agent(concat!(
-                    "LyricGlass/",
+                    "Vitrilyr/",
                     env!("CARGO_PKG_VERSION"),
-                    " (unpublished local desktop build)"
+                    " (+https://github.com/paulneja/vitrilyr)"
                 ))
                 .connect_timeout(Duration::from_secs(5))
                 .timeout(Duration::from_secs(12))

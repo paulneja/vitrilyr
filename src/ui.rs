@@ -6,16 +6,16 @@ use crate::{
 use gtk::{gdk, gio, glib, prelude::*};
 #[cfg(feature = "wayland")]
 use gtk4_layer_shell::LayerShell;
-use lyricglass::{
-    config::Config,
-    lyrics::Lyrics,
-    player::PlayerEvent,
-    state::{MediaCommand, Playback, Snapshot, Track},
-};
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
     time::{Duration, Instant},
+};
+use vitrilyr::{
+    config::Config,
+    lyrics::Lyrics,
+    player::PlayerEvent,
+    state::{MediaCommand, Playback, Snapshot, Track},
 };
 
 pub struct Ui {
@@ -71,11 +71,11 @@ impl Ui {
         let (backend, events) = Backend::start()?;
         let window = gtk::ApplicationWindow::builder()
             .application(app)
-            .title("LyricGlass")
+            .title("Vitrilyr")
             .decorated(false)
             .resizable(false)
             .build();
-        window.add_css_class("lyricglass");
+        window.add_css_class("vitrilyr");
         platform.setup(&window, false);
         let glass = gtk::Box::new(gtk::Orientation::Vertical, 4);
         glass.add_css_class("glass");
@@ -98,7 +98,7 @@ impl Ui {
         let metadata = gtk::Box::new(gtk::Orientation::Vertical, 2);
         metadata.set_hexpand(true);
         metadata.set_valign(gtk::Align::Center);
-        let title = label("LyricGlass", "track-title");
+        let title = label("Vitrilyr", "track-title");
         let artist = label("Spotify", "artist");
         let source = label(tr("Disconnected"), "source");
         for item in [&title, &artist, &source] {
@@ -609,7 +609,7 @@ impl Ui {
                     self.generation.set(self.generation.get() + 1);
                     self.lyrics.borrow_mut().take();
                 }
-                self.title.set_text("LyricGlass");
+                self.title.set_text("Vitrilyr");
                 self.artist.set_text(tr("Spotify is not running"));
                 self.source.set_text(tr("Waiting"));
                 self.view.set(None, tr("Your music appears here"));
@@ -860,7 +860,7 @@ impl Ui {
         let snapshot = Snapshot {
             track: Track {
                 title: "A little room for music".into(),
-                artists: vec!["LyricGlass".into()],
+                artists: vec!["Vitrilyr".into()],
                 length_us: 180_000_000,
                 ..Track::default()
             },
@@ -878,7 +878,7 @@ impl Ui {
         };
         self.update(snapshot);
         self.generation.set(self.generation.get() + 1);
-        self.event(Event::Lyrics(self.generation.get(),Ok(Lyrics::Synced(lyricglass::lrc::parse(
+        self.event(Event::Lyrics(self.generation.get(),Ok(Lyrics::Synced(vitrilyr::lrc::parse(
             "[00:00.00]A quiet moment\n[00:04.00]Let the music stay with you\n[00:09.00]One line at a time\n[00:14.00]A little room for music\n[00:19.00]Wherever the evening goes")))));
         self.source.set_text(tr("Preview"));
     }

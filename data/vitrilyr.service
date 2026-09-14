@@ -1,10 +1,10 @@
 [Unit]
-Description=LyricGlass Spotify lyrics overlay
+Description=Vitrilyr Spotify lyrics overlay
 PartOf=graphical-session.target
 After=graphical-session-pre.target
 
 [Service]
-ExecStart=%h/.local/bin/lyricglass
+ExecStart=%h/.local/bin/vitrilyr
 Restart=on-failure
 RestartSec=3
 

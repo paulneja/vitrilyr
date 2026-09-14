@@ -118,8 +118,8 @@ impl Default for Config {
 
 pub fn dir() -> PathBuf {
     directories::BaseDirs::new()
-        .map(|d| d.config_dir().join("lyricglass"))
-        .unwrap_or_else(|| PathBuf::from(".lyricglass"))
+        .map(|d| d.config_dir().join("vitrilyr"))
+        .unwrap_or_else(|| PathBuf::from(".vitrilyr"))
 }
 
 impl Config {
@@ -159,7 +159,9 @@ impl Config {
     pub fn load() -> Self {
         let bytes = (|| -> std::io::Result<Vec<u8>> {
             let mut bytes = Vec::new();
-            std::fs::File::open(dir().join("config.json"))?
+            let current = dir().join("config.json");
+            let path = settings_path(&current);
+            std::fs::File::open(path)?
                 .take(128 * 1024 + 1)
                 .read_to_end(&mut bytes)?;
             Ok(bytes)
@@ -258,9 +260,9 @@ impl Config {
             0.0
         };
         format!(
-            r##"// Only include from the optional niri-lyricglass compositor.
+            r##"// Only include from the optional niri-vitrilyr compositor.
 layer-rule {{
-    match namespace="^lyricglass$"
+    match namespace="^vitrilyr$"
     geometry-corner-radius {radius}
     background-effect {{
         blur {blur}
@@ -301,9 +303,9 @@ layer-rule {{
         let blur = self.theme == "glass";
         let shadow = if self.theme == "minimal" { "off" } else { "on" };
         format!(
-            r##"// Stock Niri-compatible geometry, updated by LyricGlass.
+            r##"// Stock Niri-compatible geometry, updated by Vitrilyr.
 layer-rule {{
-    match namespace="^lyricglass$"
+    match namespace="^vitrilyr$"
     geometry-corner-radius {radius}
     background-effect {{ blur {blur}; xray false; }}
     shadow {{ {shadow}; softness 24; spread 0; offset x=0 y=6; color "#00000045"; }}
@@ -324,7 +326,7 @@ pub fn prepare_liquid() -> Result<()> {
     let base = directories::BaseDirs::new().context("No home directory")?;
     let directory = dir();
     let preview = directory.join("preview");
-    let preview_app = preview.join("lyricglass");
+    let preview_app = preview.join("vitrilyr");
     let executable = std::env::current_exe()?;
     let scene = executable
         .parent()
@@ -380,7 +382,7 @@ binds {{
         environment = serde_json::to_string(&format!("XDG_CONFIG_HOME={}", preview.display()))?,
         app = quote(&executable)?
     );
-    let binary = base.home_dir().join(".local/bin/niri-lyricglass");
+    let binary = base.home_dir().join(".local/bin/niri-vitrilyr");
     for (name, text) in [
         ("liquid-session.kdl", session),
         ("liquid-preview.kdl", preview_config),
@@ -391,7 +393,7 @@ binds {{
             .args(["validate", "--config"])
             .arg(&path)
             .output()
-            .context("Missing niri-lyricglass: run compositor/build.sh")?;
+            .context("Missing niri-vitrilyr: run compositor/build.sh")?;
         anyhow::ensure!(
             output.status.success(),
             "Configuration rejected: {}",
@@ -415,7 +417,7 @@ impl Shortcuts {
     pub fn render(&self, executable: &std::path::Path) -> Result<String> {
         let exe = serde_json::to_string(&executable.to_string_lossy())?;
         let mut text =
-            String::from("// Managed by LyricGlass. Change keys in its settings.\nbinds {\n");
+            String::from("// Managed by Vitrilyr. Change keys in its settings.\nbinds {\n");
         let mut seen = std::collections::HashSet::new();
         for (key, action) in self.pairs() {
             if key.is_empty() {
@@ -455,10 +457,32 @@ pub fn install_shortcuts(shortcuts: &Shortcuts) -> Result<()> {
         "include {}",
         serde_json::to_string(&target.to_string_lossy())?
     );
+    let legacy_include = format!(
+        "include {}",
+        serde_json::to_string(
+            &base
+                .config_dir()
+                .join("lyricglass/shortcuts.kdl")
+                .to_string_lossy()
+        )?
+    );
     let candidate = if original.lines().any(|line| line.trim() == include) {
         original.clone()
+    } else if original.lines().any(|line| line.trim() == legacy_include) {
+        original
+            .lines()
+            .map(|line| {
+                if line.trim() == legacy_include {
+                    include.as_str()
+                } else {
+                    line
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n"
     } else {
-        format!("{original}\n// LyricGlass global shortcuts\n{include}\n")
+        format!("{original}\n// Vitrilyr global shortcuts\n{include}\n")
     };
     let snippet = shortcuts.render(&std::env::current_exe()?)?;
     std::fs::create_dir_all(dir())?;
@@ -467,7 +491,7 @@ pub fn install_shortcuts(shortcuts: &Shortcuts) -> Result<()> {
     std::fs::write(&effect_target, Config::load().surface_effects())?;
     let old_snippet = std::fs::read(&target).ok();
     std::fs::write(&target, snippet)?;
-    let check_path = niri_dir.join(format!(".lyricglass-check-{}.kdl", std::process::id()));
+    let check_path = niri_dir.join(format!(".vitrilyr-check-{}.kdl", std::process::id()));
     let result = (|| -> Result<()> {
         std::fs::write(&check_path, &candidate)?;
         let output = Command::new("niri")
@@ -482,7 +506,7 @@ pub fn install_shortcuts(shortcuts: &Shortcuts) -> Result<()> {
             );
         }
         if candidate != original {
-            std::fs::write(niri_dir.join("config.kdl.before-lyricglass"), &original)?;
+            std::fs::write(niri_dir.join("config.kdl.before-vitrilyr"), &original)?;
             std::fs::rename(&check_path, &config_path)?;
         }
         Ok(())
@@ -503,9 +527,34 @@ pub fn install_shortcuts(shortcuts: &Shortcuts) -> Result<()> {
     result
 }
 
+fn settings_path(current: &std::path::Path) -> PathBuf {
+    if current.exists() {
+        return current.to_owned();
+    }
+    current
+        .parent()
+        .and_then(std::path::Path::parent)
+        .map(|base| base.join("lyricglass/config.json"))
+        .filter(|legacy| legacy.exists())
+        .unwrap_or_else(|| current.to_owned())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn legacy_settings_never_replace_current_preferences() {
+        let root = tempfile::tempdir().unwrap();
+        let old = root.path().join("lyricglass/config.json");
+        let new = root.path().join("vitrilyr/config.json");
+        assert_eq!(settings_path(&new), new);
+        std::fs::create_dir_all(old.parent().unwrap()).unwrap();
+        std::fs::write(&old, "{}").unwrap();
+        assert_eq!(settings_path(&new), old);
+        std::fs::create_dir_all(new.parent().unwrap()).unwrap();
+        std::fs::write(&new, "{}").unwrap();
+        assert_eq!(settings_path(&new), new);
+    }
     #[test]
     fn compositor_effects_follow_the_selected_style() {
         let mut config = Config {

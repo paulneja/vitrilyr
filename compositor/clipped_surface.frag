@@ -1,6 +1,6 @@
 #version 100
 // SPDX-License-Identifier: GPL-3.0-or-later
-// LyricGlass optical surface, integrated through Niri-glass uniform plumbing.
+// Vitrilyr optical surface, integrated through Niri-glass uniform plumbing.
 //_DEFINES_
 #if defined(EXTERNAL)
 #extension GL_OES_EGL_image_external : require

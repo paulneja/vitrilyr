@@ -9,8 +9,8 @@ pub fn key(bytes: &[u8]) -> String {
 
 pub fn root() -> PathBuf {
     directories::BaseDirs::new()
-        .map(|d| d.cache_dir().join("lyricglass"))
-        .unwrap_or_else(|| std::env::temp_dir().join(format!("lyricglass-{}", std::process::id())))
+        .map(|d| d.cache_dir().join("vitrilyr"))
+        .unwrap_or_else(|| std::env::temp_dir().join(format!("vitrilyr-{}", std::process::id())))
 }
 
 pub async fn read(path: &Path, max: u64) -> Option<Vec<u8>> {

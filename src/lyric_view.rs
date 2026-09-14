@@ -1,11 +1,11 @@
 use crate::i18n::tr;
 use gtk::{cairo, pango, prelude::*};
-use lyricglass::{lrc, lyrics::Lyrics};
 use std::{
     cell::RefCell,
     rc::Rc,
     time::{Duration, Instant},
 };
+use vitrilyr::{lrc, lyrics::Lyrics};
 
 pub struct LyricView {
     pub widget: gtk::DrawingArea,
@@ -67,7 +67,7 @@ impl LyricView {
         });
         self.widget.queue_draw();
     }
-    pub fn appearance(&self, config: &lyricglass::config::Config) {
+    pub fn appearance(&self, config: &vitrilyr::config::Config) {
         let mut state = self.state.borrow_mut();
         state.font_family = config.font_family.clone();
         state.spacing = config.line_spacing;

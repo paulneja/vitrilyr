@@ -1,7 +1,3 @@
-use lyricglass::{
-    player::{self, PlayerEvent},
-    state::{MediaCommand, Playback, Snapshot},
-};
 use std::{
     collections::HashMap,
     io::{BufRead, BufReader},
@@ -9,13 +5,17 @@ use std::{
     time::Duration,
 };
 use tokio::sync::mpsc;
+use vitrilyr::{
+    player::{self, PlayerEvent},
+    state::{MediaCommand, Playback, Snapshot},
+};
 use zbus::{
     Connection,
     object_server::SignalEmitter,
     zvariant::{OwnedObjectPath, OwnedValue, Value},
 };
 
-const NAME: &str = "org.mpris.MediaPlayer2.spotify.LyricGlassTest";
+const NAME: &str = "org.mpris.MediaPlayer2.spotify.VitrilyrTest";
 const PATH: &str = "/org/mpris/MediaPlayer2";
 
 struct Bus(Child);

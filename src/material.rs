@@ -1,6 +1,6 @@
 use gtk::{cairo, prelude::*};
-use lyricglass::config::Config;
 use std::{cell::RefCell, f64::consts::PI, rc::Rc};
+use vitrilyr::config::Config;
 
 struct State {
     radius: f64,

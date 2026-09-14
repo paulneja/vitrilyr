@@ -1,11 +1,11 @@
 use crate::i18n::tr;
 use crate::{backend::Preference, ui::Ui};
 use gtk::{gdk, glib, prelude::*};
-use lyricglass::{
+use std::{cell::Cell, rc::Rc};
+use vitrilyr::{
     config::{Config, Shortcuts},
     state::MediaCommand,
 };
-use std::{cell::Cell, rc::Rc};
 
 pub fn dialog(ui: &Ui, title: &str, width: i32, height: i32) -> gtk::Window {
     let window = gtk::Window::builder()
@@ -64,7 +64,7 @@ pub fn open(ui: &Rc<Ui>) {
         return;
     }
     let config = ui.config.borrow().clone();
-    let window = dialog(ui, tr("LyricGlass · Settings"), 500, 680);
+    let window = dialog(ui, tr("Vitrilyr · Settings"), 500, 680);
     let pages = gtk::Stack::new();
     pages.set_vexpand(true);
     pages.set_vhomogeneous(false);
@@ -413,7 +413,7 @@ pub fn open(ui: &Rc<Ui>) {
             filters.append(&filter);
             chooser.set_filters(Some(&filters));
             if save {
-                chooser.set_initial_name(Some("lyricglass-settings.json"));
+                chooser.set_initial_name(Some("vitrilyr-settings.json"));
             }
             let weak = Rc::downgrade(ui);
             let parent = ui.window.clone();
@@ -690,7 +690,7 @@ pub fn open(ui: &Rc<Ui>) {
             previous: values[4].clone(),
             next: values[5].clone(),
         };
-        if let Err(error) = config.shortcuts.render(std::path::Path::new("lyricglass")) {
+        if let Err(error) = config.shortcuts.render(std::path::Path::new("vitrilyr")) {
             ui.notice.set_text(&error.to_string());
             return;
         }
@@ -711,7 +711,7 @@ pub fn open(ui: &Rc<Ui>) {
     }
     ui.notice.set_margin_top(12);
     content.append(&ui.notice);
-    let quit = gtk::Button::with_label(tr("Quit LyricGlass"));
+    let quit = gtk::Button::with_label(tr("Quit Vitrilyr"));
     quit.set_margin_top(16);
     ui.on_button(&quit, |ui| {
         if let Some(app) = ui.window.application() {

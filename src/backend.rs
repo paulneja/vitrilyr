@@ -1,11 +1,11 @@
-use lyricglass::{
+use std::{sync::mpsc, time::Duration};
+use tokio::sync::mpsc as async_mpsc;
+use vitrilyr::{
     config::{self, Config},
     lyrics::{Artwork, Lyrics, Provider},
     player::{self, PlayerEvent},
     state::{MediaCommand, Track},
 };
-use std::{sync::mpsc, time::Duration};
-use tokio::sync::mpsc as async_mpsc;
 
 pub enum Event {
     Shutdown,
@@ -13,7 +13,7 @@ pub enum Event {
     Lyrics(u64, Result<Lyrics, String>),
     Art(u64, Option<Artwork>),
     Notice(String),
-    Shortcuts(lyricglass::config::Shortcuts),
+    Shortcuts(vitrilyr::config::Shortcuts),
     Startup(bool),
     Imported(Box<Config>),
 }
@@ -55,7 +55,7 @@ impl Backend {
         let (loads, mut requests) = async_mpsc::unbounded_channel::<Load>();
         let (preferences, mut changes) = async_mpsc::unbounded_channel::<Preference>();
         std::thread::Builder::new()
-            .name("lyricglass-worker".into())
+            .name("vitrilyr-worker".into())
             .spawn(move || {
                 runtime.block_on(async move {
                     let signal_events = events.clone();
@@ -141,7 +141,7 @@ impl Backend {
                                 Preference::Startup(c) => {
                                     let enabled = c.autostart;
                                     if let Err(error) = tokio::task::spawn_blocking(move || {
-                                        lyricglass::startup::set_enabled(enabled)
+                                        vitrilyr::startup::set_enabled(enabled)
                                     })
                                     .await
                                     .unwrap_or_else(|e| Err(e.into()))

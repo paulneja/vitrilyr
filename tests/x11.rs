@@ -28,7 +28,9 @@ struct Session {
 }
 impl Session {
     fn command(&self) -> Command {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_lyricglass"));
+        let binary = std::env::var_os("VITRILYR_TEST_BINARY")
+            .unwrap_or_else(|| env!("CARGO_BIN_EXE_vitrilyr").into());
+        let mut command = Command::new(binary);
         command
             .env_remove("WAYLAND_DISPLAY")
             .env_remove("NIRI_SOCKET")
@@ -88,7 +90,7 @@ impl Session {
             let deadline = Instant::now() + Duration::from_secs(8);
             loop {
                 if bus
-                    .name_has_owner("io.github.lyricglass.LyricGlass".try_into().unwrap())
+                    .name_has_owner("io.github.paulneja.Vitrilyr".try_into().unwrap())
                     .await
                     .unwrap()
                 {
@@ -180,9 +182,9 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
         bus: bus.trim().into(),
         config: tempfile::tempdir().unwrap(),
     };
-    let config_dir = session.config.path().join("lyricglass");
+    let config_dir = session.config.path().join("vitrilyr");
     std::fs::create_dir_all(&config_dir).unwrap();
-    let config = lyricglass::config::Config {
+    let config = vitrilyr::config::Config {
         autostart: false,
         free_position: true,
         x: 100,
@@ -212,10 +214,10 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
     let immediate = session.config.path().join("immediate.json");
     session.cli(&["style", "light"]);
     session.cli(&["export-config", immediate.to_str().unwrap()]);
-    let exported: lyricglass::config::Config =
+    let exported: vitrilyr::config::Config =
         serde_json::from_slice(&std::fs::read(&immediate).unwrap()).unwrap();
     assert_eq!(exported.theme, "light", "Export must use live preferences");
-    let artifacts = std::env::var_os("LYRICGLASS_TEST_ARTIFACTS")
+    let artifacts = std::env::var_os("VITRILYR_TEST_ARTIFACTS")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| session.config.path().join("captures"));
     std::fs::create_dir_all(&artifacts).unwrap();
@@ -224,7 +226,7 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
         session.wait(|s| s["theme"] == style);
         session.capture(&artifacts, &format!("x11-{style}.png"), false);
         session.cli(&["export-config", immediate.to_str().unwrap()]);
-        let appearance: lyricglass::config::Config =
+        let appearance: vitrilyr::config::Config =
             serde_json::from_slice(&std::fs::read(&immediate).unwrap()).unwrap();
         std::fs::write(
             artifacts.join(format!("niri-{style}.kdl")),
@@ -287,7 +289,7 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
                 .reply()
                 .unwrap()
                 .value
-                == b"LyricGlass"
+                == b"Vitrilyr"
         })
         .expect("Native X11 window");
     let geometry = connection.get_geometry(window).unwrap().reply().unwrap();
@@ -379,7 +381,7 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
     thread::sleep(Duration::from_millis(300));
     let backup = session.config.path().join("settings.json");
     session.cli(&["export-config", backup.to_str().unwrap()]);
-    let mut imported: lyricglass::config::Config =
+    let mut imported: vitrilyr::config::Config =
         serde_json::from_slice(&std::fs::read(&backup).unwrap()).unwrap();
     imported.theme = "light".into();
     imported.language = "zh".into();
@@ -388,7 +390,7 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
     session.cli(&["import-config", backup.to_str().unwrap()]);
     session.wait(|s| s["theme"] == "light" && s["language"] == "zh");
     thread::sleep(Duration::from_millis(300));
-    let saved: lyricglass::config::Config =
+    let saved: vitrilyr::config::Config =
         serde_json::from_slice(&std::fs::read(config_dir.join("config.json")).unwrap()).unwrap();
     assert!(!saved.autostart, "Import must not enable login startup");
     assert_eq!((saved.x, saved.y), (270, 300));
@@ -406,7 +408,7 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
     session.cli(&["recover"]);
     session.wait(|s| s["visible"] == true && s["click_through"] == false);
     session.cli(&["export-config", immediate.to_str().unwrap()]);
-    let recovered: lyricglass::config::Config =
+    let recovered: vitrilyr::config::Config =
         serde_json::from_slice(&std::fs::read(&immediate).unwrap()).unwrap();
     assert_eq!(recovered.theme, "light");
     assert_eq!(recovered.language, "zh");
@@ -416,7 +418,7 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
     session.cli(&["style", "dark"]);
     session.cli(&["quit"]);
     assert!(app.0.wait().unwrap().success());
-    let final_config: lyricglass::config::Config =
+    let final_config: vitrilyr::config::Config =
         serde_json::from_slice(&std::fs::read(config_dir.join("config.json")).unwrap()).unwrap();
     assert_eq!(final_config.theme, "dark", "Quit must flush pending writes");
     assert_eq!(
@@ -448,7 +450,7 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
             .success()
     );
     assert!(restarted.0.wait().unwrap().success());
-    let terminated: lyricglass::config::Config =
+    let terminated: vitrilyr::config::Config =
         serde_json::from_slice(&std::fs::read(config_dir.join("config.json")).unwrap()).unwrap();
     assert_eq!(
         terminated.theme, "contrast",
@@ -458,7 +460,7 @@ fn native_x11_layouts_languages_shortcuts_and_backups() {
     oversized.extend_from_slice(br#"{"theme":"light"}"#);
     std::fs::write(config_dir.join("config.json"), oversized).unwrap();
     session.cli(&["export-config", immediate.to_str().unwrap()]);
-    let fallback: lyricglass::config::Config =
+    let fallback: vitrilyr::config::Config =
         serde_json::from_slice(&std::fs::read(&immediate).unwrap()).unwrap();
     assert_eq!(
         fallback.theme, "glass",

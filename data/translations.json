@@ -19,9 +19,9 @@
     "Cerrar",
     "关闭"
   ],
-  "LyricGlass · Settings": [
-    "LyricGlass · Ajustes",
-    "LyricGlass · 设置"
+  "Vitrilyr · Settings": [
+    "Vitrilyr · Ajustes",
+    "Vitrilyr · 设置"
   ],
   "Appearance": [
     "Apariencia",
@@ -259,9 +259,9 @@
     "Validando atajos con Niri...",
     "正在验证 Niri 快捷键…"
   ],
-  "Quit LyricGlass": [
-    "Salir de LyricGlass",
-    "退出 LyricGlass"
+  "Quit Vitrilyr": [
+    "Salir de Vitrilyr",
+    "退出 Vitrilyr"
   ],
   "Disconnected": [
     "Sin conexion",

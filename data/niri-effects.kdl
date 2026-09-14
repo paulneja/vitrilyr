@@ -1,6 +1,6 @@
 // Niri >= 26.04. GTK owns the visible 10px corners; Niri rounds the shadow.
 layer-rule {
-    match namespace="^lyricglass$"
+    match namespace="^vitrilyr$"
     geometry-corner-radius 10
     background-effect {
         blur true

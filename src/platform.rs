@@ -1,8 +1,8 @@
 use gtk::{gdk, prelude::*};
 #[cfg(feature = "wayland")]
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
-use lyricglass::config::Config;
 use std::cell::RefCell;
+use vitrilyr::config::Config;
 use x11rb::{
     connection::Connection,
     protocol::xproto::{self, ConfigureWindowAux, ConnectionExt, PropMode},
@@ -61,7 +61,7 @@ impl Platform {
     pub fn is_layer(&self) -> bool {
         matches!(self, Self::LayerShell)
     }
-    pub fn shortcuts(&self, keys: &lyricglass::config::Shortcuts) -> anyhow::Result<()> {
+    pub fn shortcuts(&self, keys: &vitrilyr::config::Shortcuts) -> anyhow::Result<()> {
         if let Self::X11(x11) = self {
             x11.borrow_mut().shortcuts(keys)?;
         }
@@ -96,9 +96,9 @@ impl Platform {
         if self.is_layer() {
             window.init_layer_shell();
             window.set_namespace(Some(if settings {
-                "lyricglass-settings"
+                "vitrilyr-settings"
             } else {
-                "lyricglass"
+                "vitrilyr"
             }));
             window.set_layer(Layer::Overlay);
             window.set_exclusive_zone(0);
@@ -244,7 +244,7 @@ impl X11 {
         self.last_position = Some(geometry);
         Ok(())
     }
-    fn shortcuts(&mut self, keys: &lyricglass::config::Shortcuts) -> anyhow::Result<()> {
+    fn shortcuts(&mut self, keys: &vitrilyr::config::Shortcuts) -> anyhow::Result<()> {
         let names: Vec<String> = keys
             .pairs()
             .iter()
@@ -253,7 +253,7 @@ impl X11 {
         if self.shortcut_keys == names {
             return Ok(());
         }
-        keys.render(std::path::Path::new("lyricglass"))?;
+        keys.render(std::path::Path::new("vitrilyr"))?;
         let setup = self.connection.setup();
         let mapping = self
             .connection

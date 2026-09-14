@@ -31,7 +31,7 @@ pub fn unit(executable: &Path) -> Result<String> {
         .replace('%', "%%")
         .replace('$', "$$");
     Ok(format!(
-        "[Unit]\nDescription=LyricGlass music overlay\nPartOf=graphical-session.target\nAfter=graphical-session-pre.target\n\n[Service]\nExecStart=\"{path}\"\nRestart=on-failure\nRestartSec=3\n\n[Install]\nWantedBy=graphical-session.target\n"
+        "[Unit]\nDescription=Vitrilyr music overlay\nPartOf=graphical-session.target\nAfter=graphical-session-pre.target\n\n[Service]\nExecStart=\"{path}\"\nRestart=on-failure\nRestartSec=3\n\n[Install]\nWantedBy=graphical-session.target\n"
     ))
 }
 
@@ -40,8 +40,8 @@ pub fn set_enabled(enabled: bool) -> Result<()> {
     let executable = std::env::current_exe()?;
     let desktop = base
         .config_dir()
-        .join("autostart/io.github.lyricglass.LyricGlass.desktop");
-    let service = base.config_dir().join("systemd/user/lyricglass.service");
+        .join("autostart/io.github.paulneja.Vitrilyr.desktop");
+    let service = base.config_dir().join("systemd/user/vitrilyr.service");
     if enabled {
         std::fs::create_dir_all(desktop.parent().unwrap())?;
         std::fs::create_dir_all(service.parent().unwrap())?;
@@ -56,20 +56,20 @@ pub fn set_enabled(enabled: bool) -> Result<()> {
         std::fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nType=Application\nName=LyricGlass\nComment=Music and lyrics at login\nExec={} autostart-run\nIcon=audio-x-generic\nTerminal=false\nX-GNOME-Autostart-enabled=true\n",
+                "[Desktop Entry]\nType=Application\nName=Vitrilyr\nComment=Music and lyrics at login\nExec={} autostart-run\nIcon=audio-x-generic\nTerminal=false\nX-GNOME-Autostart-enabled=true\n",
                 desktop_exec(&executable)?
             ),
         )?;
         if systemd_available() {
             run_systemctl(&["daemon-reload"])?;
-            run_systemctl(&["enable", "lyricglass.service"])?;
+            run_systemctl(&["enable", "vitrilyr.service"])?;
         }
     } else {
         if desktop.exists() {
             std::fs::remove_file(desktop)?;
         }
         if service.exists() && systemd_available() {
-            run_systemctl(&["disable", "lyricglass.service"])?;
+            run_systemctl(&["disable", "vitrilyr.service"])?;
         }
     }
     Ok(())
@@ -80,12 +80,9 @@ pub fn install_desktop() -> Result<()> {
     let directory = base.data_dir().join("applications");
     std::fs::create_dir_all(&directory)?;
     let executable = desktop_exec(&std::env::current_exe()?)?;
-    let entry = include_str!("../data/io.github.lyricglass.LyricGlass.desktop")
-        .replace("Exec=lyricglass", &format!("Exec={executable}"));
-    std::fs::write(
-        directory.join("io.github.lyricglass.LyricGlass.desktop"),
-        entry,
-    )?;
+    let entry = include_str!("../data/io.github.paulneja.Vitrilyr.desktop")
+        .replace("Exec=vitrilyr", &format!("Exec={executable}"));
+    std::fs::write(directory.join("io.github.paulneja.Vitrilyr.desktop"), entry)?;
     Ok(())
 }
 
@@ -107,7 +104,7 @@ pub fn run() -> Result<()> {
         let mut args = vec!["import-environment"];
         args.extend(&variables);
         if (variables.is_empty() || run_systemctl(&args).is_ok())
-            && run_systemctl(&["start", "lyricglass.service"]).is_ok()
+            && run_systemctl(&["start", "vitrilyr.service"]).is_ok()
         {
             return Ok(());
         }
@@ -121,7 +118,7 @@ pub fn notify_config(config: &crate::config::Config) -> Result<()> {
         return Ok(());
     }
     let app = gio::Application::new(
-        Some("io.github.lyricglass.LyricGlass"),
+        Some("io.github.paulneja.Vitrilyr"),
         gio::ApplicationFlags::empty(),
     );
     app.register(None::<&gio::Cancellable>)?;
@@ -138,7 +135,7 @@ pub fn notify_config(config: &crate::config::Config) -> Result<()> {
 pub fn current_config() -> Result<crate::config::Config> {
     if std::env::var_os("DBUS_SESSION_BUS_ADDRESS").is_some() {
         let app = gio::Application::new(
-            Some("io.github.lyricglass.LyricGlass"),
+            Some("io.github.paulneja.Vitrilyr"),
             gio::ApplicationFlags::empty(),
         );
         app.register(None::<&gio::Cancellable>)?;
@@ -177,8 +174,8 @@ mod tests {
     #[test]
     fn quotes_executable_paths_without_shell_interpolation() {
         assert_eq!(
-            desktop_exec(Path::new("/home/a b/lyricglass")).unwrap(),
-            "\"/home/a b/lyricglass\""
+            desktop_exec(Path::new("/home/a b/vitrilyr")).unwrap(),
+            "\"/home/a b/vitrilyr\""
         );
         assert!(desktop_exec(Path::new("/bad\npath")).is_err());
         assert!(
@@ -187,7 +184,7 @@ mod tests {
                 .contains("100%%/$$app")
         );
         assert!(
-            !unit(Path::new("/usr/bin/lyricglass"))
+            !unit(Path::new("/usr/bin/vitrilyr"))
                 .unwrap()
                 .contains("default.target")
         );

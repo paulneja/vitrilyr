@@ -2,7 +2,7 @@
 
 An optional, experimental compositor installed **alongside** Niri. This is not
 Apple code or a pixel-identical iOS implementation. Stock Niri provides blur;
-this variant also bends the actual live scene behind the LyricGlass layer.
+this variant also bends the actual live scene behind the Vitrilyr layer.
 No screenshots, screen-recording portal or browser produce the effect.
 
 ## Sources and Licenses
@@ -31,11 +31,11 @@ Additional Arch dependencies:
 
 ```sh
 sudo pacman -S --needed clang libinput libxkbcommon libseat libdisplay-info mesa pipewire
-cargo build --release --examples --bin lyricglass
+cargo build --release --examples --bin vitrilyr
 ./compositor/build.sh
 ```
 
-The pinned build uses Cargo.lock and installs `~/.local/bin/niri-lyricglass`.
+The pinned build uses Cargo.lock and installs `~/.local/bin/niri-vitrilyr`.
 It never replaces `/usr/bin/niri`, your active configuration or login manager.
 Treat it as experimental; test before using it as your main session.
 
@@ -47,22 +47,22 @@ Treat it as experimental; test before using it as your main session.
 
 Opens a nested desktop with an optical grid and the real GTK app using original
 demo lyrics. Escape closes it, F7 toggles the panel and Shift+F7 opens settings.
-It has its own D-Bus and preferences under `~/.config/lyricglass/preview/` and
+It has its own D-Bus and preferences under `~/.config/vitrilyr/preview/` and
 does not control Spotify. Starting it resets only those preview preferences.
 The preview bus cannot activate desktop daemons. Accessibility is disabled only
 inside that diagnostic preview, preventing collisions with session services.
 
 ## Real Desktop
 
-`lyricglass prepare-liquid` generates and validates a separate
-`~/.config/lyricglass/liquid-session.kdl`, including your existing Niri config and
+`vitrilyr prepare-liquid` generates and validates a separate
+`~/.config/vitrilyr/liquid-session.kdl`, including your existing Niri config and
 the optical rules. Stock Niri must never include `liquid-effects.kdl`. The regular
 shortcut include uses only stock-compatible `surface-effects.kdl`. Appearance
 sliders update both rule files atomically off the GTK thread.
 
 For the full effect over games and applications, log out, enter a TTY, log in,
 and run the absolute path to `compositor/run.sh session`. The script refuses to
-start a real desktop over an existing graphical session. Launch LyricGlass in
+start a real desktop over an existing graphical session. Launch Vitrilyr in
 the new session. Shell services and portals still need their normal session
 setup; this is not a replacement for distribution display-manager integration.
 No display-manager entry is installed. To revert, log out and select your usual
@@ -76,8 +76,8 @@ nested, not as the primary DRM desktop or with games/multiple monitors.
 ## Recheck
 
 Build the `glass_scene` example. Compare nested screenshots with
-`lyricglass material liquid --refraction 0` and `--refraction 6`, targeting its
+`vitrilyr material liquid --refraction 0` and `--refraction 6`, targeting its
 private bus. The grid must bend inside the panel near its edges; outside pixels
 must not change. Check normal, line, minimum square, dragging, settings,
-reduced motion, hide/show and frosted fallback. `lyricglass capture` verifies
+reduced motion, hide/show and frosted fallback. `vitrilyr capture` verifies
 widget layout only; `grim` on the nested socket verifies the compositor effect.

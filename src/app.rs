@@ -2,12 +2,12 @@ use crate::i18n::tr;
 use crate::{Args, Command, ui::Ui};
 use clap::Parser;
 use gtk::{gio, glib, prelude::*};
-use lyricglass::state::MediaCommand;
 use std::{cell::RefCell, rc::Rc};
+use vitrilyr::state::MediaCommand;
 
 pub fn run() -> glib::ExitCode {
     let app = gtk::Application::builder()
-        .application_id("io.github.lyricglass.LyricGlass")
+        .application_id("io.github.paulneja.Vitrilyr")
         .flags(gio::ApplicationFlags::HANDLES_COMMAND_LINE)
         .build();
     let current: Rc<RefCell<Option<Rc<Ui>>>> = Rc::new(RefCell::new(None));
@@ -20,7 +20,7 @@ pub fn run() -> glib::ExitCode {
     let target = current.clone();
     config_action.connect_activate(move |_, parameter| {
         if let Some(json) = parameter.and_then(|v| v.str())
-            && let Ok(config) = lyricglass::config::Config::decode(json.as_bytes())
+            && let Ok(config) = vitrilyr::config::Config::decode(json.as_bytes())
             && let Some(ui) = target.borrow().as_ref()
         {
             ui.change(|c| *c = config);

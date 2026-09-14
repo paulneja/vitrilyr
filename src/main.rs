@@ -121,46 +121,46 @@ fn main() -> gtk::glib::ExitCode {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "lyricglass=info".into()),
+                .unwrap_or_else(|_| "vitrilyr=info".into()),
         )
         .init();
     let args = Args::parse();
     if matches!(args.command, Some(Command::InstallDesktop)) {
-        return cli_result(lyricglass::startup::install_desktop());
+        return cli_result(vitrilyr::startup::install_desktop());
     }
     if let Some(Command::Autostart { state }) = &args.command {
         let result = (|| -> anyhow::Result<()> {
             let enabled = state == "on";
-            lyricglass::startup::set_enabled(enabled)?;
-            let mut config = lyricglass::startup::current_config()?;
+            vitrilyr::startup::set_enabled(enabled)?;
+            let mut config = vitrilyr::startup::current_config()?;
             config.autostart = enabled;
             tokio::runtime::Runtime::new()?.block_on(config.save())?;
-            lyricglass::startup::notify_config(&config)?;
+            vitrilyr::startup::notify_config(&config)?;
             Ok(())
         })();
         return cli_result(result);
     }
     if matches!(args.command, Some(Command::AutostartRun)) {
-        return cli_result(lyricglass::startup::run());
+        return cli_result(vitrilyr::startup::run());
     }
     if let Some(Command::ExportConfig { path }) = &args.command {
         return cli_result((|| {
             tokio::runtime::Runtime::new()?
-                .block_on(lyricglass::startup::current_config()?.export(path))
+                .block_on(vitrilyr::startup::current_config()?.export(path))
         })());
     }
     if let Some(Command::ImportConfig { path }) = &args.command {
         return cli_result((|| -> anyhow::Result<()> {
             let runtime = tokio::runtime::Runtime::new()?;
-            let mut config = runtime.block_on(lyricglass::config::Config::read_from(path))?;
-            config.autostart = lyricglass::startup::current_config()?.autostart;
+            let mut config = runtime.block_on(vitrilyr::config::Config::read_from(path))?;
+            config.autostart = vitrilyr::startup::current_config()?.autostart;
             runtime.block_on(config.save())?;
-            lyricglass::startup::notify_config(&config)?;
+            vitrilyr::startup::notify_config(&config)?;
             Ok(())
         })());
     }
     if matches!(args.command, Some(Command::PrepareLiquid)) {
-        return match lyricglass::config::prepare_liquid() {
+        return match vitrilyr::config::prepare_liquid() {
             Ok(()) => gtk::glib::ExitCode::SUCCESS,
             Err(error) => {
                 eprintln!("{error:#}");
@@ -169,8 +169,8 @@ fn main() -> gtk::glib::ExitCode {
         };
     }
     if matches!(args.command, Some(Command::InstallShortcuts)) {
-        return match lyricglass::config::install_shortcuts(
-            &lyricglass::config::Config::load().shortcuts,
+        return match vitrilyr::config::install_shortcuts(
+            &vitrilyr::config::Config::load().shortcuts,
         ) {
             Ok(()) => {
                 println!("Shortcuts enabled in Niri");

@@ -3,7 +3,7 @@ use gtk::{cairo, prelude::*};
 
 fn main() -> gtk::glib::ExitCode {
     let app = gtk::Application::builder()
-        .application_id("io.github.lyricglass.OpticalTest")
+        .application_id("io.github.paulneja.Vitrilyr.OpticalTest")
         .build();
     app.connect_activate(|app| {
         let window = gtk::ApplicationWindow::builder()
@@ -50,7 +50,7 @@ fn main() -> gtk::glib::ExitCode {
             cr.set_font_size(18.0);
             cr.set_source_rgb(0.94, 0.94, 0.95);
             cr.move_to(36.0, f64::from(height) - 36.0);
-            let _ = cr.show_text("LYRICGLASS / OPTICAL TEST");
+            let _ = cr.show_text("VITRILYR / OPTICAL TEST");
         });
         window.set_child(Some(&scene));
         window.fullscreen();

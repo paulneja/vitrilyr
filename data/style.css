@@ -1,4 +1,4 @@
-window.lyricglass { background: transparent; color: #f1f1f3; }
+window.vitrilyr { background: transparent; color: #f1f1f3; }
 .glass {
   background: alpha(#18181b, 0.86);
   border: 1px solid alpha(white, 0.12);
